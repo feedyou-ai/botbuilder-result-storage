@@ -5,11 +5,16 @@
         "**/bower_components": true,
         "**/dist": true
     },
-    "typescript.referencesCodeLens.enabled": true,
+    //"typescript.referencesCodeLens.enabled": true,
     "tslint.ignoreDefinitionFiles": false,
     "tslint.autoFixOnSave": true,
     "tslint.exclude": "**/node_modules/**/*",
     "cSpell.words": [
         "definitelytyped"
-    ]
+    ],
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "prettier.singleQuote": false,
+    "prettier.semi": true,
+    "prettier.printWidth": 100
 }

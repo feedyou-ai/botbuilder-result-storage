@@ -26,6 +26,7 @@
     "watch-debug": "concurrently -k -p \"[{name}]\" -n \"Sass,TypeScript,Node\" -c \"yellow.bold,cyan.bold,green.bold\" \"npm run watch-sass\" \"npm run watch-ts\" \"npm run serve-debug\""
   },
   "dependencies": {
+    "@microsoft/microsoft-graph-client": "^1.0.0",
     "@types/node-persist": "0.0.33",
     "async": "^2.6.0",
     "bcrypt-nodejs": "^0.0.3",
@@ -43,6 +44,7 @@
     "google-spreadsheet": "^2.0.4",
     "lodash": "^4.17.4",
     "lusca": "^1.5.2",
+    "md5": "^2.2.1",
     "mongoose": "^4.13.7",
     "morgan": "^1.9.0",
     "node-persist": "^2.1.0",
@@ -51,9 +53,11 @@
     "passport-facebook": "^2.1.1",
     "passport-local": "^1.0.0",
     "pug": "^2.0.0-rc.4",
-    "request": "^2.83.0"
+    "request": "^2.83.0",
+    "superagent": "^3.8.2"
   },
   "devDependencies": {
+    "@microsoft/microsoft-graph-types": "^1.1.0",
     "@types/async": "^2.0.45",
     "@types/bcrypt-nodejs": "0.0.30",
     "@types/bluebird": "^3.5.18",

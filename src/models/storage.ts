@@ -24,14 +24,31 @@ export default class Storage {
     }
   }
 
+  public initDocument(data: {}) {
+    return new Promise((resolve, reject) => {
+      this.adapter
+        .initDocument(data)
+        .then(result =>
+          resolve({
+            storageId: this.storageId,
+            result
+          })
+        )
+        .catch(err => reject(err));
+    });
+  }
+
   public storeRow(data: {}, keys: {}, userData: {}) {
-    return new Promise(resolve => {
-      this.adapter.storeRow(data, keys, userData).then(userData =>
-        resolve({
-          storageId: this.storageId,
-          userData
-        })
-      );
+    return new Promise((resolve, reject) => {
+      this.adapter
+        .storeRow(data, keys, userData)
+        .then(userData =>
+          resolve({
+            storageId: this.storageId,
+            userData
+          })
+        )
+        .catch(err => reject(err));
     });
   }
 

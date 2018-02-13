@@ -18,6 +18,15 @@ export default class Bot {
     });
   }
 
+  initDocument(data: {}) {
+    return new Promise((resolve, reject) => {
+      Promise
+        .all(this.storages.map(storage => storage.initDocument(data)))
+        .then(row => resolve(row))
+        .catch(err => reject(err));
+    });
+  }
+
   static create(from: Bot) {
     if (!from.id) {
       throw new Error("Cannot find 'id' field.");

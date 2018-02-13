@@ -57,6 +57,50 @@ export let storeRow = (req: Request, res: Response) => {
 };
 
 /**
+ * POST /api/bots/:bot_id/init
+ * Updates/inserts (based on keys) row into all storages of given bot.
+ */
+export let initDocuments = (req: Request, res: Response) => {
+  if (!req.params.bot_id) {
+    throw new Error("Parameter bot_id not found in URL.");
+  }
+
+  if (!req.body || !req.body.header) {
+    throw new Error('Cannot find "header" array in request body.');
+  }
+
+  const bot = botService.getBotById(req.params.bot_id);
+  if (bot) {
+    bot
+      .initDocument(req.body.header)
+      .then(results => res.end(JSON.stringify(results)))
+      .catch(err => {
+        console.log(err);
+        res.statusCode = 500;
+        res.end(JSON.stringify(err));
+      });
+  } else {
+    throw new Error("Bot wasn't found.");
+  }
+};
+
+/**
+ * POST /api/bots/:bot_id/storages
+ */
+export let addStorage = (req: Request, res: Response) => {
+  if (!req.body) {
+    throw new Error("Cannot find storage object in request body.");
+  }
+
+  if (!req.params.bot_id) {
+    throw new Error("Parameter bot_id not found in URL.");
+  }
+
+  botService.addStorage(req.params.bot_id, req.body);
+  res.end();
+};
+
+/**
  * PUT /api/bots
  * Inserts new bot
  */

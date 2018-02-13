@@ -34,75 +34,6 @@ export default class Google extends Adapter {
     }
   }
 
-  checkConnection(header: string[]) {
-    const adapter = this;
-    return new Promise((resolve, reject) => {
-      if (!this.document || !this.sheet || this.checkIfMissing(header)) {
-        adapter.document = new GoogleSpreadsheet(this.documentId);
-
-        async.waterfall(
-          [
-            function auth(callback: any) {
-              adapter.document.useServiceAccountAuth(adapter.config.credentials, callback);
-            },
-
-            function getInfoAndWorksheets(callback: any) {
-              adapter.document.getInfo(callback);
-            },
-
-            function getHeader(info: any, callback: any) {
-              adapter.sheet = info.worksheets[SHEET_INDEX - 1];
-              adapter.sheet.getCells(
-                {
-                  "min-row": 1,
-                  "max-row": 1,
-                  "min-col": 1,
-                  "return-empty": true
-                },
-                callback
-              );
-            },
-
-            function appendMissingHeaderColumns(headerCells: Cell[], callback: any) {
-              adapter.header = headerCells.map(c => c.value).filter(v => v);
-              const missing = header.filter(i => adapter.header.indexOf(i) < 0);
-
-              if (missing.length > 0) {
-                for (
-                  let i = adapter.header.length;
-                  i < adapter.header.length + missing.length;
-                  i++
-                ) {
-                  if (!headerCells[i]) {
-                    reject(
-                      new Error(
-                        "HEADER COLUMN ON POSITION " +
-                          i +
-                          " NOT FOUND - TRY TO ADD IT USING GDOCS GUI"
-                      )
-                    );
-                  }
-                  headerCells[i].value = missing[i - adapter.header.length];
-                }
-                adapter.header = headerCells.map(c => c.value).filter(v => v);
-                adapter.sheet.bulkUpdateCells(headerCells, callback);
-              } else {
-                callback();
-              }
-            }
-          ],
-          resolve
-        );
-      } else {
-        resolve();
-      }
-    });
-  }
-
-  checkIfMissing(header: string[]) {
-    return _.difference(header, this.header).length > 0;
-  }
-
   login(config: {}) {
     return false;
   }
@@ -175,5 +106,74 @@ export default class Google extends Adapter {
         })
         .catch(reject);
     });
+  }
+
+  checkConnection(header: string[]) {
+    const adapter = this;
+    return new Promise((resolve, reject) => {
+      if (!this.document || !this.sheet || this.checkIfMissing(header)) {
+        adapter.document = new GoogleSpreadsheet(this.documentId);
+
+        async.waterfall(
+          [
+            function auth(callback: any) {
+              adapter.document.useServiceAccountAuth(adapter.config.credentials, callback);
+            },
+
+            function getInfoAndWorksheets(callback: any) {
+              adapter.document.getInfo(callback);
+            },
+
+            function getHeader(info: any, callback: any) {
+              adapter.sheet = info.worksheets[SHEET_INDEX - 1];
+              adapter.sheet.getCells(
+                {
+                  "min-row": 1,
+                  "max-row": 1,
+                  "min-col": 1,
+                  "return-empty": true
+                },
+                callback
+              );
+            },
+
+            function appendMissingHeaderColumns(headerCells: Cell[], callback: any) {
+              adapter.header = headerCells.map(c => c.value).filter(v => v);
+              const missing = header.filter(i => adapter.header.indexOf(i) < 0);
+
+              if (missing.length > 0) {
+                for (
+                  let i = adapter.header.length;
+                  i < adapter.header.length + missing.length;
+                  i++
+                ) {
+                  if (!headerCells[i]) {
+                    reject(
+                      new Error(
+                        "HEADER COLUMN ON POSITION " +
+                          i +
+                          " NOT FOUND - TRY TO ADD IT USING GDOCS GUI"
+                      )
+                    );
+                  }
+                  headerCells[i].value = missing[i - adapter.header.length];
+                }
+                adapter.header = headerCells.map(c => c.value).filter(v => v);
+                adapter.sheet.bulkUpdateCells(headerCells, callback);
+              } else {
+                callback();
+              }
+            }
+          ],
+          resolve
+        );
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  checkIfMissing(header: string[]) {
+    return _.difference(header, this.header).length > 0;
   }
 }

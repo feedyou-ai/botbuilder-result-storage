@@ -26,5 +26,7 @@ app.get("/api/bots", botController.getBots);
 app.get("/api/bots/:bot_id", botController.getBot);
 app.post("/api/bots", botController.addBot);
 app.post("/api/bots/:bot_id/row", botController.storeRow);
+app.post("/api/bots/:bot_id/init", botController.initDocuments);
+app.post("/api/bots/:bot_id/storages", botController.addStorage);
 
 module.exports = app;

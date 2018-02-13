@@ -36,6 +36,11 @@ export default class FilesystemBotService implements BotService {
     return bot;
   }
 
+  addStorage(botId: string, storage: Storage) {
+    const bot = this.getBotById(botId);
+    console.log("adding storage", bot, storage);
+  }
+
   protected loadBots() {
     this.bots = (NodePersist.getItemSync("bots") || []).map((bot: Bot) => Bot.create(bot));
   }
