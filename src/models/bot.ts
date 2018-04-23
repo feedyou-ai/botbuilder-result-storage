@@ -18,10 +18,10 @@ export default class Bot {
     });
   }
 
-  initDocument(data: {}) {
+  initDocument(header: string[], keys: string[]) {
     return new Promise((resolve, reject) => {
       Promise
-        .all(this.storages.map(storage => storage.initDocument(data)))
+        .all(this.storages.map(storage => storage.initDocument(header, keys)))
         .then(row => resolve(row))
         .catch(err => reject(err));
     });

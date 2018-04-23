@@ -24,10 +24,10 @@ export default class Storage {
     }
   }
 
-  public initDocument(data: {}) {
+  public initDocument(header: string[], keys: string[]) {
     return new Promise((resolve, reject) => {
       this.adapter
-        .initDocument(data)
+        .initDocument(header, keys)
         .then(result =>
           resolve({
             storageId: this.storageId,

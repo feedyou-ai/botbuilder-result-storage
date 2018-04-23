@@ -9,6 +9,7 @@ export default class Office extends Adapter {
   client: Graph.Client;
   accessToken: string;
   sheetUrl: string;
+  keys: string[];
 
   constructor(documentId: string, config: {} = {}) {
     super(documentId, config);
@@ -52,11 +53,12 @@ export default class Office extends Adapter {
     return false;
   }
 
-  initDocument(header: {}, keys: {}): Promise<{}> {
+  initDocument(header: string[], keys: string[]): Promise<{}> {
     return new Promise((resolve, reject) => {
-      console.log("initDocument", this.documentId, header);
+      console.log("initDocument", this.documentId, header, keys);
 
       // persist keys
+      this.keys = keys;
 
       // check existence of document and sheet
       const sheetUrl = "/me/drive/items/" + this.documentId + "/workbook/worksheets/List1";

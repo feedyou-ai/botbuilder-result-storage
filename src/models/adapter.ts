@@ -9,6 +9,6 @@ export default abstract class Adapter {
   }
 
   abstract login(config: {}): boolean;
-  abstract initDocument(header: {}): Promise<{}>;
+  abstract initDocument(header: string[], keys: string[]): Promise<{}>;
   abstract storeRow(data: {}, keys: {}, userData?: {}): Promise<{}>;
 }

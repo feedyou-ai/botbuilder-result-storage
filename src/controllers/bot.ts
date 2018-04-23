@@ -43,16 +43,20 @@ export let storeRow = (req: Request, res: Response) => {
   const bot = botService.getBotById(req.params.bot_id);
   if (bot) {
     const { data, keys, userData } = req.body;
-    bot
-      .storeRow(data, keys, userData)
-      .then(results => res.end(JSON.stringify(results)))
-      .catch(err => {
-        console.log(err);
-        res.statusCode = 500;
-        res.end();
-      });
+    try {
+      bot
+        .storeRow(data, keys, userData)
+        .then(results => res.end(JSON.stringify(results)))
+        .catch(err => {
+          console.log(err);
+          res.statusCode = 500;
+          res.end();
+        });
+    } catch (e) {
+      console.error(e);
+    }
   } else {
-    throw new Error("Bot wasn't found.");
+    throw new Error("Bot with given ID wasn't found.");
   }
 };
 
@@ -72,8 +76,12 @@ export let initDocuments = (req: Request, res: Response) => {
   const bot = botService.getBotById(req.params.bot_id);
   if (bot) {
     bot
-      .initDocument(req.body.header)
-      .then(results => res.end(JSON.stringify(results)))
+      .initDocument(req.body.header, ["name", "id"])
+      .then(results => {
+        // some values in bot could be added during initDocument
+        botService.saveBots();
+        res.json(results);
+      })
       .catch(err => {
         console.log(err);
         res.statusCode = 500;

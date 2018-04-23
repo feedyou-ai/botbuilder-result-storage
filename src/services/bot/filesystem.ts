@@ -45,7 +45,7 @@ export default class FilesystemBotService implements BotService {
     this.bots = (NodePersist.getItemSync("bots") || []).map((bot: Bot) => Bot.create(bot));
   }
 
-  protected saveBots() {
+  saveBots() {
     NodePersist.setItemSync("bots", this.bots);
   }
 }

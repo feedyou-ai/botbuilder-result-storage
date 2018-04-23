@@ -39,7 +39,9 @@ export default class Google extends Adapter {
   }
 
   initDocument(header: {}, keys: {}) {
-    return false;
+    return new Promise((resolve, reject) => {
+      resolve();
+    });
   }
 
   storeRow(data: {}, keys: {}, userData: { rowAtIndex?: number } = {}) {
