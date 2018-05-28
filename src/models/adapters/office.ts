@@ -50,10 +50,11 @@ export default class Office extends Adapter {
   }
 
   login(config: {}): boolean {
+    // TODO implement something like https://github.com/microsoftgraph/nodejs-connect-sample
     return false;
   }
 
-  initDocument(header: string[], keys: string[]): Promise<{}> {
+  init(header: string[], keys: string[]): Promise<{}> {
     return new Promise((resolve, reject) => {
       console.log("initDocument", this.documentId, header, keys);
 
@@ -119,19 +120,7 @@ export default class Office extends Adapter {
     });
   }
 
-  private async getSheetHeader() {
-    return new Promise((resolve, reject) => {
-      this.client
-        .api(this.sheetUrl + "/range(address='A1:D1')")
-        .get()
-        .then((range: GraphTypes.WorkbookRange) => {
-          resolve(range.values[0]);
-        })
-        .catch(reject);
-    });
-  }
-
-  async storeRow(data: {}): Promise<{}> {
+  async store(data: {}): Promise<{}> {
     return new Promise(async (resolve, reject) => {
       console.log("store row", data);
       const sheetHeader = await this.getSheetHeader();
@@ -205,6 +194,18 @@ export default class Office extends Adapter {
             })
             .catch(err => console.error("add row", err) || reject(err));
         });
+    });
+  }
+
+  private async getSheetHeader() {
+    return new Promise((resolve, reject) => {
+      this.client
+        .api(this.sheetUrl + "/range(address='A1:D1')")
+        .get()
+        .then((range: GraphTypes.WorkbookRange) => {
+          resolve(range.values[0]);
+        })
+        .catch(reject);
     });
   }
 }

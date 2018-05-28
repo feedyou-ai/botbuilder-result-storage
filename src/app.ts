@@ -2,14 +2,10 @@ import * as express from "express";
 import * as dotenv from "dotenv";
 import * as path from "path";
 import * as bodyParser from "body-parser";
+import * as storagesController from "./controllers/storages";
 
 // Load environment variables from .env file, where API keys and passwords are configured
-dotenv.config({ path: ".env.example" });
-
-// Controllers (route handlers)
-import * as homeController from "./controllers/home";
-import * as apiController from "./controllers/api";
-import * as botController from "./controllers/bot";
+dotenv.config();
 
 // Create Express server
 const app = express();
@@ -19,14 +15,14 @@ app.set("port", process.env.PORT || 3000);
 app.use(express.static(path.join(__dirname, "public"), { maxAge: 31557600000 }));
 app.use(bodyParser.json());
 
-app.get("/", homeController.index);
-app.get("/api", apiController.getApi);
+app.get("/api/storages", storagesController.get);
+app.post("/api/init", storagesController.init);
+app.post("/api/store", storagesController.store);
 
-app.get("/api/bots", botController.getBots);
-app.get("/api/bots/:bot_id", botController.getBot);
-app.post("/api/bots", botController.addBot);
-app.post("/api/bots/:bot_id/row", botController.storeRow);
-app.post("/api/bots/:bot_id/init", botController.initDocuments);
-app.post("/api/bots/:bot_id/storages", botController.addStorage);
+// TODO API methods for per-storage init/store
+// app.post("/api/storages", storagesController.addStorage);
+
+// TODO API methods for storages management
+// app.post("/api/storages", storagesController.addStorage);
 
 module.exports = app;

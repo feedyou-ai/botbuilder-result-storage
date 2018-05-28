@@ -38,13 +38,13 @@ export default class Google extends Adapter {
     return false;
   }
 
-  initDocument(header: {}, keys: {}) {
+  init(header: {}, keys: {}) {
     return new Promise((resolve, reject) => {
       resolve();
     });
   }
 
-  storeRow(data: {}, keys: {}, userData: { rowAtIndex?: number } = {}) {
+  store(data: {}, keys: {}, userData: { rowAtIndex?: number } = {}) {
     const adapter = this;
 
     return new Promise((resolve, reject) => {
