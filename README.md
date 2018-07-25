@@ -121,6 +121,6 @@ The biggest part of the performance suffers from 3rd party service. Occasional *
 - [x] ~~support for mutiple config providers~~
 - [x] ~~basic Office 365 support using hardcoded list of keys~~
 - [ ] Office 365 login helper
-- [ ] support for adding of new keys in runtime
+- [ ] support for adding of new columns in runtime
 - [ ] support for running as Azure Function
 - [ ] Azure Table Queue support for `store` method
