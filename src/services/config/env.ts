@@ -31,7 +31,18 @@ export default class EnvConfigService extends ConfigService {
 
       // Office365 Excel sheet adapter
       if (process.env.ResultStorageExcelSpreadsheetId) {
-        config.addAdapter(new Office(process.env.ResultStorageExcelSpreadsheetId));
+        const name = process.env.ResultStorageExcelSheetName;
+        const id = process.env.ResultStorageClientId;
+        const secret = process.env.ResultStorageClientSecret;
+        const colNum = process.env.ResultStorageMaximumColumns || 64; // if not specified, set default value of 64
+        config.addAdapter(
+          new Office(process.env.ResultStorageExcelSpreadsheetId, {
+            SheetName: name,
+            ClientId: id,
+            ClientSecret: secret,
+            MaxColumns: colNum
+          })
+        );
       }
 
       resolve(config);
