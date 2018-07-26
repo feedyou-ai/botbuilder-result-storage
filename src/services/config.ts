@@ -12,7 +12,12 @@ export default abstract class ConfigService {
     if (this.config) {
       return new Promise(resolve => resolve(this.config));
     } else {
-      return this.load();
+      return new Promise(resolve =>
+        this.load().then((conf: any) => {
+          this.config = conf;
+          resolve(conf);
+        })
+      );
     }
   }
 

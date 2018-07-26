@@ -34,15 +34,16 @@ export default class EnvConfigService extends ConfigService {
         const name = process.env.ResultStorageExcelSheetName;
         const id = process.env.ResultStorageClientId;
         const secret = process.env.ResultStorageClientSecret;
+        const refreshToken = process.env.ResultStorageRefreshToken;
         const colNum = process.env.ResultStorageMaximumColumns || 64; // if not specified, set default value of 64
-        config.addAdapter(
-          new Office(process.env.ResultStorageExcelSpreadsheetId, {
-            SheetName: name,
-            ClientId: id,
-            ClientSecret: secret,
-            MaxColumns: colNum
-          })
-        );
+        const configProcess = {
+          SheetName: name,
+          ClientId: id,
+          ClientSecret: secret,
+          RefreshToken: refreshToken,
+          MaxColumns: colNum
+        };
+        config.addAdapter(new Office(process.env.ResultStorageExcelSpreadsheetId, configProcess));
       }
 
       resolve(config);

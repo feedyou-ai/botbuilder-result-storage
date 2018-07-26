@@ -5,6 +5,7 @@ export default abstract class Adapter {
     SheetName: string;
     ClientId: string;
     ClientSecret: string;
+    RefreshToken: string;
     MaxColumns?: number;
   };
 
@@ -14,6 +15,7 @@ export default abstract class Adapter {
       SheetName: string;
       ClientId: string;
       ClientSecret: string;
+      RefreshToken: string;
       MaxColumns?: number;
     }
   ) {

@@ -7,6 +7,7 @@ import * as md5 from "md5";
 import { Error } from "mongoose";
 import { resolve } from "url";
 import { Bool } from "../../../node_modules/aws-sdk/clients/inspector";
+import { MaxKey } from "../../../node_modules/@types/bson";
 
 export default class Office extends Adapter {
   client: Graph.Client;
@@ -22,6 +23,7 @@ export default class Office extends Adapter {
       SheetName: string;
       ClientId: string;
       ClientSecret: string;
+      RefreshToken: string;
       MaxColumns?: number;
     }
   ) {
@@ -41,7 +43,6 @@ export default class Office extends Adapter {
 
     this.client = Graph.Client.init({
       authProvider: done => {
-        // TODO persist accessToken between requests and introduce auto refresh logic when any Graph request fails
         if (this.accessToken) {
           done(undefined, this.accessToken);
         } else {
@@ -53,14 +54,13 @@ export default class Office extends Adapter {
               client_id: this.config.ClientId,
               client_secret: this.config.ClientSecret,
               grant_type: "refresh_token",
-              refresh_token:
-                "OAQABAAAAAADXzZ3ifr-GRbDT45zNSEFE82DsiB0q-fWRRP6JyHdPqqmmBIZ8jwgZXig2Yy0VQmCdeQkcsvzmjwGXaqDt7315dkJIK1JXtS0nrxvXoxgtRkHYxiNr9a26r2U51BH0TXwqRERpfQU7bX5-CL9ob10I8CSxjQOeQRmC0D1TBvBjgWvCcV-TCfkH64lNvpvgNWFRnBMJtTqOqsHIWrvzNpjVkNXjIf4066WN7ihjt6TQTbU4crM_Uvgk-OCFOnEPEl6z_GtcXXGljdpV6uPEHCZbGuXy6EXxF2tIGS_iRHE6xw0mmoNPp9JJa9CNx62PqvqqPzQO_TGKsmQQ2RwVqUOsdmx2pfgVn5tIyDmAxJ6gn8J_JEZlkKE5Z80BfJe7HfAwu37mH4tEgegt9xnLGZn61hMpshQ2-ukDKYI2Kp7WaR97SkXcMXtedVDhKmlOWCEUb0Xg_nD7l6ZB5sExErn7DpL43GNmpgWp9bWeJYM70SXiEoSc-stMDv1Y55ZXuSUbejUV-Lho_Wbu1bCp5n0GRDZxW9rdzGws0glDXGmnt8one3LeCLtzYw_8mjdLKyHs3Fxboty8F6t1WJX6wu_AdaeWcBZoH7iw57ohyAWKHScuip5EJW2RL7pwESF3jkSJ8PumTXnkp1-f-dvl9OodOlE1r8V6KcLpmTTyNUZCv82rMW4dhR2TaDtwwxrFyHQWVIxDK8kbSTM7X1GJhXwUGPov3AdcVYlq3sKmlhkuAQjpqooAv7k_BlnQFRU5TddVaIXCc8EVw8Sg9CkBgXSStCTcKW_OfHzGGDn5yhsc8g0RyfX4UPiOnhbIJ_vaezsgAA",
-              // "MCduHOhTUrRdKlxo4d9D5XczprHuyl112sK5S3hvGK7ceyEzc0tKa7JzzQUOEinRSOMPhawN6ADKpLjbRB!z61WI8CnOq6NG2YRmtaxpmK2MBA6k5RuYfIP1XHxsPtfBi3e4doGnnXmUkS3tPQCcytipyrfZ2QTzAx0xivjUAmSZsM6vye*G1yi2cReq4ICzLYgyzTbUVpF0fOL12XCUqmjdJ4QtWKUSmUyJ0Ep1TcQCFdBJe2DsTPISLyVSWfi0owKa4rLysq8W0wxOGjjdVn471mLlYPXjBAPVWD0zegmTv9hQciuJEM2419kddsyiwKQfns6M9Mc*RWZ*BpOwZE4oNz30UisJgmyRc30BxGVWt4hry6EvqziJlGueLB!XNlg$$",
+              refresh_token: this.config.RefreshToken,
               scope: "Files.ReadWrite.All offline_access"
             })
             .then(res => {
               if (res.body && res.body.access_token) {
-                console.log(res.body.access_token);
+                console.log("Latest access token: ", res.body.access_token);
+                console.log("It expires in: ", res.body.expires_in);
                 this.accessToken = res.body.access_token;
                 done(undefined, res.body.access_token);
               } else {
@@ -86,30 +86,48 @@ export default class Office extends Adapter {
     return false;
   }
 
-  checkForUnknownError(err: any = {}, printErr: boolean = true) {
+  checkForExpectedErrors(err: any = {}, printErr: boolean = true) {
     if (err.code && err.code === "UnknownError") {
+      // this error occurs completely randomly and is successfully solved by restarting the same process
       console.error("UnknownError exception caught. Restarting last process.");
       return true;
+    } else if (err.code && err.code === "InvalidAuthenticationToken") {
+      // this error exception means that access token needs to be refreshed.
+      console.error("Authentication token has expired. Refreshing the token...");
+      // setting this to falsy value will trigger refresh_token request in authProvider
+      this.accessToken = undefined;
+      return true;
     } else {
+      // no expected errors found.
       if (printErr) console.error(err);
       return false;
     }
   }
 
+  areArraysEqual(baseArray: string[], array: string[]) {
+    if (baseArray.length !== array.length) return false;
+    const length = Math.max(baseArray.length, array.length);
+    for (let i = 0; i < length; i++) {
+      if (baseArray[i] != array[i]) return false;
+    }
+    return true;
+  }
+
   init(header: string[]): Promise<{}> {
+    console.log("\nInitializing...");
     return new Promise((resolve, reject) => {
       console.log("initDocument", this.documentId, header);
 
       // using excel4node npm package to find desired range (output example: A1:F1)
       const inputRange = xl.getExcelCellRef(1, 1) + ":" + xl.getExcelCellRef(1, header.length);
 
-      // check existence of document and sheet
       const sheetUrl = this.getSheetUrl();
 
       const patchTable = (table: any = {}) => {
-        // update table name
-        console.log("updating table name from %s to %s", table.name, this.getTableName());
+        // patch table settings: rename it and add first row
         const request = () => {
+          // update table name
+          console.log("updating table name from %s to %s", table.name, this.getTableName());
           this.client
             .api(sheetUrl + "/tables/" + table.id)
             .patch({
@@ -119,6 +137,7 @@ export default class Office extends Adapter {
             })
             .then(() => {
               const request = () => {
+                // getting table rows
                 this.client
                   .api(sheetUrl + "/tables/" + this.getTableName() + "/rows")
                   .get()
@@ -127,11 +146,11 @@ export default class Office extends Adapter {
                     if (rows.value[1]) {
                       resolve();
                     } else {
-                      // add first row
                       console.log(
                         "adding first row to solve unintended expansion of first named item"
                       );
                       const request = () => {
+                        // add empty first row
                         this.client
                           .api(sheetUrl + "/tables/" + this.getTableName() + "/rows")
                           .post({})
@@ -140,58 +159,66 @@ export default class Office extends Adapter {
                             resolve();
                           })
                           .catch(err => {
-                            if (this.checkForUnknownError(err)) request();
-                            else reject(err);
+                            this.checkForExpectedErrors(err) ? request() : reject(err);
                           });
                       };
                       request();
                     }
                   })
                   .catch(err => {
-                    if (this.checkForUnknownError(err)) request();
-                    else reject(err);
+                    // For some reason, after manually deleting the document and creating a new one with the same name, and then
+                    // immediately (sooner than in 30s) initializing a new table, a typical exception handling method will throw
+                    // a "ItemNowFound" in this exact promise, while trying to get data about the table. This seems like a
+                    // server-side error. Thats why scanning for the exact error code eliminates the problem, it gets into a loop
+                    // until (usually in about 20s) the server would finally handle itself and behave correctly.
+                    // poor user input isn't handled here, so it shouldn't trigger an infinite loop.
+                    this.checkForExpectedErrors(err, false) || err.code === "ItemNotFound"
+                      ? request()
+                      : reject(err);
                   });
               };
               request();
             })
             .catch(err => {
-              if (this.checkForUnknownError(err)) request();
-              else reject(err);
+              this.checkForExpectedErrors(err) ? request() : reject(err);
             });
         };
         request();
       };
       const request = () => {
+        // check existence of document and sheet
+        console.log("checking if document exists...");
         this.client
           .api(sheetUrl)
           .get()
           .then((worksheet: GraphTypes.WorkbookWorksheet) => {
-            // check existence of document table
             const request = () => {
+              // check existence of document table
               this.client
                 .api(sheetUrl + "/tables")
                 .get()
                 .then((tables: { value: GraphTypes.WorkbookTable[] }) => {
                   // checking table existence
                   if (tables.value.length > 0) {
+                    // checking table health, because sometimes after UnknownError occurs during init, table stays unfinished
                     console.log("table already exists:\n", tables.value.map((a: any) => a.name));
+                    console.log("checking table health...");
                     // checking table header length, in case user wants to use init to extend the table
                     this.getSheetHeader().then((sheetHeader: any) => {
-                      if (sheetHeader.length < header.length) {
-                        console.log("new headers found in the init request. Updating header...");
+                      if (!this.areArraysEqual(sheetHeader, header)) {
+                        console.log("Updating header...");
                         this.updateHeaders(sheetUrl, header);
                       }
                     });
-                    // checking table health, because sometimes after UnknownError occurs during init, table stays unfinished
                     if (tables.value[0].name != this.getTableName()) {
                       // checking table name
                       console.log(
-                        "but it seems that something is not right with it's name... Applying table update..."
+                        "...and it seems that something is not right with it's name... Applying table update..."
                       );
                       patchTable(tables.value[0]);
                     } else {
-                      // perform a GET request to get rows array to check if there is the first row inserted
                       const request = () => {
+                        // perform a GET request to get rows array to check if there is the first row inserted
                         this.client
                           .api(sheetUrl + "/tables/" + this.getTableName() + "/rows")
                           .get()
@@ -199,20 +226,23 @@ export default class Office extends Adapter {
                             // checking if there is a first row added to the table. if not, then patch the table
                             if (rows.value[1]) {
                               console.log(
-                                "and everything seems to be correct with the table format"
+                                "...and everything seems to be correct with the table format. Safe to use."
                               );
                               resolve({});
                             } else {
                               console.log(
-                                "but it seems that something is not right with it's rows... Applying table update..."
+                                "...and it seems that something is not right with it's rows... Applying table update..."
                               );
                               patchTable(tables.value[0]);
                             }
                           })
                           .catch(err => {
                             // request to get table rows failed, it means something is wrong, patching...
-                            if (this.checkForUnknownError(err, false)) request();
-                            else patchTable(tables.value[0]);
+                            this.checkForExpectedErrors(err, false)
+                              ? request()
+                              : console.log(
+                                  "...and it seems that something is not right with it's rows... Applying table update..."
+                                ) && patchTable(tables.value[0]);
                           });
                       };
                       request();
@@ -222,9 +252,9 @@ export default class Office extends Adapter {
                     // insert header range
                     this.updateHeaders(sheetUrl, header)
                       .then(res => {
-                        // create table
                         console.log("now creating table");
                         const request = () => {
+                          // create table
                           this.client
                             .api(sheetUrl + "/tables/add")
                             .post({
@@ -236,28 +266,26 @@ export default class Office extends Adapter {
                               patchTable(table);
                             })
                             .catch(err => {
-                              if (this.checkForUnknownError(err)) request();
-                              else reject(err);
+                              this.checkForExpectedErrors(err) ? request() : reject(err);
                             });
                         };
                         request();
                       })
                       .catch(err => {
-                        if (this.checkForUnknownError(err)) request();
-                        else reject(err);
+                        this.checkForExpectedErrors(err) ? request() : reject(err);
                       });
                   }
                 })
                 .catch(err => {
-                  if (this.checkForUnknownError(err)) request();
-                  else reject(err);
+                  this.checkForExpectedErrors(err) ? request() : reject(err);
                 });
             };
             request();
           })
           .catch(err => {
-            if (this.checkForUnknownError(err)) request();
-            else reject(err);
+            this.checkForExpectedErrors(err)
+              ? request()
+              : console.log("\nERROR: Document doesn't exist.\n") || reject(err);
           });
       };
       request();
@@ -265,25 +293,25 @@ export default class Office extends Adapter {
   }
 
   async store(data: any, keys: string[]): Promise<{}> {
+    console.log("\nStoring data...");
     return new Promise(async (resolve, reject) => {
       // get named item ID from keys values using md5
       const rowKeyColumns = keys;
-      const rowKeyValues = Object.keys(data)
-        .filter(dataKey => rowKeyColumns.includes(dataKey))
-        .map(dataKey => data[dataKey]);
-      if (keys.every((element, i) => rowKeyValues.includes(element))) {
+      const inputKeys = Object.keys(data).filter(dataKey => rowKeyColumns.includes(dataKey));
+      const rowKeyValues = inputKeys.map(dataKey => data[dataKey]);
+      if (this.areArraysEqual(keys, inputKeys)) {
       } else {
         resolve(
-          'Bad request. Some key values missing. Storing process aborted. Have you forgotten to define "keys" array? Or provide them? Check these values: [' +
+          '\nBad request. Some key values missing. Storing process aborted. Have you forgotten to define or provide the "keys" array? Check these values: [' +
             keys +
             "]"
         );
-        throw new Error("Bad request. Some key values missing. Storing process aborted.");
+        throw new Error("\nBad request. Some key values missing. Storing process aborted.");
       }
       const rowKey = rowKeyValues.join("#");
       const namedItemId = "row" + md5("row-" + rowKey).substr(0, 8);
 
-      console.log("store row", data);
+      console.log("\nstore row", data);
       let dataHeader = Object.keys(data);
       let sheetHeader: any = await this.getSheetHeader();
       console.log("sheet vs data header", sheetHeader, dataHeader);
@@ -324,7 +352,7 @@ export default class Office extends Adapter {
             })
             .catch(err => {
               // UnknownError is very harmful. If detected - restart the request.
-              if (this.checkForUnknownError(err, false)) request();
+              if (this.checkForExpectedErrors(err, false)) request();
               else {
                 // if true, then after failing updating an item, it will try to delete and readd the item back
                 // if false, then after failing updating an item, it will just throw an error
@@ -345,8 +373,7 @@ export default class Office extends Adapter {
                           // retry continuously until everything works
                         })
                         .catch(err => {
-                          if (this.checkForUnknownError(err)) request();
-                          else reject(err);
+                          this.checkForExpectedErrors(err) ? request() : reject(err);
                         });
                     };
                     request();
@@ -358,8 +385,7 @@ export default class Office extends Adapter {
                           resolve(res);
                         })
                         .catch(err => {
-                          if (this.checkForUnknownError(err)) request();
-                          else reject(err);
+                          this.checkForExpectedErrors(err) ? request() : reject(err);
                         });
                     };
                     request();
@@ -387,8 +413,9 @@ export default class Office extends Adapter {
         console.log("Header updated: [" + header + "] (" + inputRange + ")");
       })
       .catch(err => {
-        if (this.checkForUnknownError(err)) this.updateHeaders(sheetUrl, header);
-        else console.error("Failed updating headers", err);
+        this.checkForExpectedErrors(err)
+          ? this.updateHeaders(sheetUrl, header)
+          : console.error("Failed updating headers", err);
       });
   }
 
@@ -406,8 +433,7 @@ export default class Office extends Adapter {
             resolve(range.values[0]);
           })
           .catch(err => {
-            if (this.checkForUnknownError(err)) request();
-            else reject(err);
+            this.checkForExpectedErrors(err) ? request() : reject(err);
           });
       };
       request();
@@ -449,15 +475,13 @@ export default class Office extends Adapter {
                     resolve(false);
                   })
                   .catch(err => {
-                    if (this.checkForUnknownError(err)) request();
-                    else reject(err);
+                    this.checkForExpectedErrors(err) ? request() : reject(err);
                   });
               };
               request();
             })
             .catch(err => {
-              if (this.checkForUnknownError(err)) request();
-              else reject(err);
+              this.checkForExpectedErrors(err) ? request() : reject(err);
             });
         };
         request();
@@ -477,7 +501,7 @@ export default class Office extends Adapter {
             tryReAdding(namedItemRowIndex);
           })
           .catch(err => {
-            if (this.checkForUnknownError(err, false)) request();
+            if (this.checkForExpectedErrors(err, false)) request();
             else {
               // if retreiving row index was unsuccessful, just set it to a default value and continue.
               namedItemRowIndex = Office.DEFAULT_ROW_INDEX;
@@ -521,7 +545,7 @@ export default class Office extends Adapter {
                     resolve({ rowIndex: row.index });
                   })
                   .catch(err => {
-                    if (this.checkForUnknownError(err, false)) request();
+                    if (this.checkForExpectedErrors(err, false)) request();
                     else {
                       // named item probably already exists (row was manually deleted and named item remained with #REF! value)
                       if (retryWhenFail) {
@@ -535,8 +559,7 @@ export default class Office extends Adapter {
                               createRowNamedItem(false);
                             })
                             .catch(err => {
-                              if (this.checkForUnknownError(err)) request();
-                              else reject(err);
+                              this.checkForExpectedErrors(err) ? request() : reject(err);
                             });
                         };
                         request();
@@ -551,8 +574,7 @@ export default class Office extends Adapter {
             createRowNamedItem(true);
           })
           .catch(err => {
-            if (this.checkForUnknownError(err)) request();
-            else reject(err);
+            this.checkForExpectedErrors(err) ? request() : reject(err);
           });
       };
       request();
