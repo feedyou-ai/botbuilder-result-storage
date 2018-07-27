@@ -2,6 +2,7 @@ import Config from "../../models/config";
 import ConfigService from "../config";
 import Google from "../../models/adapters/google";
 import Office from "../../models/adapters/office";
+import { Credentials } from "../../../node_modules/aws-sdk";
 
 export default class EnvConfigService extends ConfigService {
   load(): Promise<Config> {
@@ -31,17 +32,15 @@ export default class EnvConfigService extends ConfigService {
 
       // Office365 Excel sheet adapter
       if (process.env.ResultStorageExcelSpreadsheetId) {
-        const name = process.env.ResultStorageExcelSheetName;
-        const id = process.env.ResultStorageClientId;
-        const secret = process.env.ResultStorageClientSecret;
-        const refreshToken = process.env.ResultStorageRefreshToken;
-        const colNum = process.env.ResultStorageMaximumColumns || 64; // if not specified, set default value of 64
         const configProcess = {
-          SheetName: name,
-          ClientId: id,
-          ClientSecret: secret,
-          RefreshToken: refreshToken,
-          MaxColumns: colNum
+          credentials: {
+            SheetName: process.env.ResultStorageExcelSheetName,
+            ClientId: process.env.ResultStorageClientId,
+            ClientSecret: process.env.ResultStorageClientSecret,
+            RefreshToken: process.env.ResultStorageRefreshToken,
+            // if max colmuns not specified, set default value of 64
+            MaxColumns: process.env.ResultStorageMaximumColumns || 64
+          }
         };
         config.addAdapter(new Office(process.env.ResultStorageExcelSpreadsheetId, configProcess));
       }

@@ -2,8 +2,11 @@ import Adapter from "../adapter";
 import * as GraphTypes from "@microsoft/microsoft-graph-types";
 import * as Graph from "@microsoft/microsoft-graph-client";
 import * as request from "superagent";
-import * as xl from "excel4node";
-import * as md5 from "md5";
+// following two imports throw and error if IMPORTED, but they're fine if REQUIRED
+const xl = require("excel4node");
+// import * as xl from "excel4node";
+const md5 = require("md5");
+// import * as md5 from "md5";
 import { Error } from "mongoose";
 import { resolve } from "url";
 import { Bool } from "../../../node_modules/aws-sdk/clients/inspector";
@@ -12,7 +15,13 @@ import { MaxKey } from "../../../node_modules/@types/bson";
 export default class Office extends Adapter {
   client: Graph.Client;
   accessToken: string;
-  sheetUrl: string;
+  configuration: {
+    SheetName: string;
+    ClientId: string;
+    ClientSecret: string;
+    RefreshToken: string;
+    MaxColumns: number;
+  };
 
   // default first row in the table is row index 4
   public static DEFAULT_ROW_INDEX = 4;
@@ -20,25 +29,28 @@ export default class Office extends Adapter {
   constructor(
     documentId: string,
     config: {
-      SheetName: string;
-      ClientId: string;
-      ClientSecret: string;
-      RefreshToken: string;
-      MaxColumns?: number;
+      credentials: {
+        SheetName: string;
+        ClientId: string;
+        ClientSecret: string;
+        RefreshToken: string;
+        MaxColumns: number;
+      };
     }
   ) {
     super(documentId, config);
-    if (typeof config.MaxColumns === "undefined") config.MaxColumns = 64;
-    this.config = config;
+    this.documentId = documentId;
+    if (typeof config.credentials.MaxColumns === "undefined") config.credentials.MaxColumns = 64;
+    this.configuration = config.credentials;
     this.adapterId = "office";
 
     console.log(
       "Sheet Name: " +
-        this.config.SheetName +
+        config.credentials.SheetName +
         ", Client ID: " +
-        this.config.ClientId +
+        config.credentials.ClientId +
         ", Client Secret: " +
-        this.config.ClientSecret
+        config.credentials.ClientSecret
     );
 
     this.client = Graph.Client.init({
@@ -51,10 +63,10 @@ export default class Office extends Adapter {
             .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
             .type("form")
             .send({
-              client_id: this.config.ClientId,
-              client_secret: this.config.ClientSecret,
+              client_id: config.credentials.ClientId,
+              client_secret: config.credentials.ClientSecret,
               grant_type: "refresh_token",
-              refresh_token: this.config.RefreshToken,
+              refresh_token: config.credentials.RefreshToken,
               scope: "Files.ReadWrite.All offline_access"
             })
             .then(res => {
@@ -74,11 +86,13 @@ export default class Office extends Adapter {
   }
 
   getTableName() {
-    return "FeedbotData_" + this.config.SheetName;
+    return "FeedbotData_" + this.configuration.SheetName;
   }
 
   getSheetUrl() {
-    return "/me/drive/items/" + this.documentId + "/workbook/worksheets/" + this.config.SheetName;
+    return (
+      "/me/drive/items/" + this.documentId + "/workbook/worksheets/" + this.configuration.SheetName
+    );
   }
 
   login(config: {}): boolean {
@@ -171,7 +185,7 @@ export default class Office extends Adapter {
                     // a "ItemNowFound" in this exact promise, while trying to get data about the table. This seems like a
                     // server-side error. Thats why scanning for the exact error code eliminates the problem, it gets into a loop
                     // until (usually in about 20s) the server would finally handle itself and behave correctly.
-                    // poor user input isn't handled here, so it shouldn't trigger an infinite loop.
+                    // poor user input isn't handled here, so it wouldn't trigger an infinite loop.
                     this.checkForExpectedErrors(err, false) || err.code === "ItemNotFound"
                       ? request()
                       : reject(err);
@@ -285,7 +299,7 @@ export default class Office extends Adapter {
           .catch(err => {
             this.checkForExpectedErrors(err)
               ? request()
-              : console.log("\nERROR: Document doesn't exist.\n") || reject(err);
+              : console.log("\nERROR: Couldn't find the document.\n") && reject(err);
           });
       };
       request();
@@ -369,8 +383,6 @@ export default class Office extends Adapter {
                           // if promise successful, reAddItem should resolve a boolean value equal to false
                           // pass it to updateItem in order to update row values without triggering item re-adding loop.
                           updateItem(res);
-                          // TODO in case of UnknownError happening somewhere, this could be set to True to
-                          // retry continuously until everything works
                         })
                         .catch(err => {
                           this.checkForExpectedErrors(err) ? request() : reject(err);
@@ -422,7 +434,11 @@ export default class Office extends Adapter {
   private async getSheetHeader() {
     // trying first process.env.ResultStorageMaximumColumns number of columns to get headers.
     const inputRange =
-      "'" + xl.getExcelCellRef(1, 1) + ":" + xl.getExcelCellRef(1, this.config.MaxColumns) + "'";
+      "'" +
+      xl.getExcelCellRef(1, 1) +
+      ":" +
+      xl.getExcelCellRef(1, this.configuration.MaxColumns) +
+      "'";
     return new Promise((resolve, reject) => {
       const request = () => {
         this.client
@@ -443,25 +459,27 @@ export default class Office extends Adapter {
   private async reAddItem(namedItemId: string, values: any[]) {
     const sheetUrl = this.getSheetUrl();
     let namedItemRowIndex = Office.DEFAULT_ROW_INDEX;
-    // get row number from existing named item
     return new Promise((resolve, reject) => {
-      // TODO in case UnknownError comes up, use resolve(true). it will re-add an item continuously until the error is no longer present
       // define tryReAdding reference to execute later
       const tryReAdding = (RowIndex: number) => {
         const request = () => {
+          // deleting old item to insert a new, correct one, right after
           this.client
             .api(sheetUrl + "/names/" + namedItemId)
             .delete()
             .then((row: GraphTypes.WorkbookTableRow) => {
-              console.log(namedItemId + " named item deleted, trying to add new range...");
-              // adding new range of an item, which is longer than the old one
+              console.log(
+                namedItemId + " named item deleted, trying to add new range on row %s...",
+                RowIndex
+              );
               const request = () => {
+                // adding new range of an item, which is different than the old one
                 this.client
                   .api(sheetUrl + "/names/add")
                   .post({
                     name: namedItemId,
-                    // building reference. format: '=List1!$A$5:$F$5'
-                    reference: `=${this.config.SheetName}!$A$${RowIndex}:$${xl.getExcelAlpha(
+                    // building reference. format example:   =List1!$A$5:$F$5
+                    reference: `=${this.getTableName()}!$A$${RowIndex}:$${xl.getExcelAlpha(
                       values.length
                     )}$${RowIndex}`
                   })
@@ -503,7 +521,7 @@ export default class Office extends Adapter {
           .catch(err => {
             if (this.checkForExpectedErrors(err, false)) request();
             else {
-              // if retreiving row index was unsuccessful, just set it to a default value and continue.
+              // if retrieving row index was unsuccessful, just set it to a default value and continue.
               namedItemRowIndex = Office.DEFAULT_ROW_INDEX;
               console.log(
                 "couldn't retrieve row index, because of exception: ",
@@ -536,9 +554,8 @@ export default class Office extends Adapter {
                   .post({
                     name: namedItemId,
                     // building reference. format: '=List1!$A$5:$F$5'
-                    reference: `=${this.config.SheetName}!$A$${row.index + 2}:$${xl.getExcelAlpha(
-                      values.length
-                    )}$${row.index + 2}`
+                    reference: `=${this.configuration.SheetName}!$A$${row.index +
+                      2}:$${xl.getExcelAlpha(values.length)}$${row.index + 2}`
                   })
                   .then((namedItem: GraphTypes.WorkbookNamedItem) => {
                     console.log("named item added");

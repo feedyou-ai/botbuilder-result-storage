@@ -1,5 +1,4 @@
 import Config from "../models/config";
-import Adapter from "../models/bot";
 
 export default abstract class ConfigService {
   config: Config;
@@ -13,14 +12,14 @@ export default abstract class ConfigService {
       return new Promise(resolve => resolve(this.config));
     } else {
       return new Promise(resolve =>
-        this.load().then((conf: any) => {
-          this.config = conf;
-          resolve(conf);
+        this.load().then((res: any) => {
+          this.config = res;
+          resolve(res);
         })
       );
     }
   }
 
-  load(): Promise<Config>;
-  save(config: Config): void;
+  abstract load(): Promise<Config>;
+  abstract save(config: Config): void;
 }

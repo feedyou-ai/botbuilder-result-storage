@@ -2,21 +2,13 @@ export default abstract class Adapter {
   adapterId: string;
   documentId: string;
   config: {
-    SheetName: string;
-    ClientId: string;
-    ClientSecret: string;
-    RefreshToken: string;
-    MaxColumns?: number;
+    credentials: {};
   };
 
   constructor(
     documentId: string,
     config: {
-      SheetName: string;
-      ClientId: string;
-      ClientSecret: string;
-      RefreshToken: string;
-      MaxColumns?: number;
+      credentials: {};
     }
   ) {
     this.documentId = documentId;
