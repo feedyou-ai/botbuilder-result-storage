@@ -6,10 +6,10 @@ This repo is based on [TypeScript-Node-Starter](https://github.com/Microsoft/Typ
 
 # How it works
 
-The main goal of this library is to abstract various data storage services so chatbot won't need to know which of them is currently used. This abstraction consists of two parts:
+The main goal of this library is to abstract various data storage services so chatbot wouldn't need to know which of them is currently used. This abstraction consists of two parts:
 
-- `INIT` method should be called during startup of chatbot and it accepts list of all keys which are expected to be stored by bot. This method could be triggered only using REST call from bot to `botbuilder-result-storage` instance or using [REST API tools](#usage) for testing.
-- `STORE` method is called whenever new value or values are needed to be stored by bot and it accepts array of key-value pairs. This method could be triggered both using REST call from bot or using Azure Storage Queue or using [REST API tools](#usage) for testing.
+- `INIT` method should be called during startup of chatbot and it accepts list of all keys which are expected to be stored by bot. This method could be triggered only using REST call from bot to `botbuilder-result-storage` instance or using [`REST API tools`](#usage) for testing.
+- `STORE` method is called whenever new value or values are needed to be stored by bot and it accepts array of key-value pairs. This method could be triggered both using REST call from bot to `botbuilder-result-storage` instance or using [`REST API tools`](#usage) for testing or using `Azure Storage Queue`.
 
 # Getting started
 
@@ -26,11 +26,7 @@ cd <project_name>
 npm install
 ```
 
-- For Windows you need updated Python version. It comes with [Visual Studio Build Tools](https://www.npmjs.com/package/windows-build-tools) if you don't have it yet:
-
-```
-npm install --global --production windows-build-tools
-```
+- For Windows you also need a recent Python version (It comes with [Visual Studio Build Tools](https://www.npmjs.com/package/windows-build-tools))
 
 - Build and run the project
 
@@ -45,7 +41,7 @@ npm start
 npm run watch
 ```
 
-# Linking with a spreadsheet
+# Linking with the **`Office 365 Excel`** spreadsheet
 
 Open `.env` file and insert your spreadsheet authorization values as environment variables:
 
@@ -78,9 +74,9 @@ ResultStorageRefreshToken=OFFICE_365_REFRESH_TOKEN
 
 This will trigger the **init** method, which will initialize a table with defined header names. 
 
-The size of the *"header"* array defines table column count. The method checks if the table already exists and if it does, it will automatically update the table, increasing the header array size and correcting any mistakes if they exist.
+The size of the *"header"* array defines table column count. The method checks if the table already exists and if it does, it will automatically update the table, increasing the header array size and correcting any mistakes if they persist.
 
-If request is successful, it will return nothing as response body with `200` status code.
+If request is successful, it will return nothing as response body with `200` status code and a new or updated table is visible in the spreadsheet immediately.
 
 - Create a `POST` request with URL `http://localhost:3000/api/store` and body:
 
@@ -101,7 +97,7 @@ The size of the *"data"* array defines table column count to be put into the tab
 
 *"keys"* array define which objects (in this example - `name` and `id`) compose a **Named Item ID**. These values are necessary to add due to correlation with defining item's row index.
 
-If request is successful, it will return `[{"rowIndex"}]` object as response body with `200` status code.
+If request is successful, it will return `[{"rowIndex"}]` object as response body with `200` status code and a new or updated item is visible in the spreadsheet table immediately.
 
 ## Modifications
 
@@ -117,18 +113,18 @@ The services run asynchronously, based on a *promise chain*, and is intended to 
 
 ### Issues
 
-The biggest part of the performance suffers from 3rd party service. Occasional `UnknownError` exceptions and slowed performance around noon, damage process performance dramatically. This package is designed to withstand some random internal server failures while going through it's chain of promises.
+The biggest part of the performance suffers from 3rd party service. Occasional `UnknownError` exceptions and slowed performance around noon, damage process performance dramatically. This package is designed to withstand some random internal server failures while going through it's chain of promises on the client side.
 
-Another server-side complication is brought by `ItemNotFound` exception during the `init` method, precisely while performing a **get** request during the first initialization of the table: The error is thrown temporarily, in a period of approximately 20 seconds. It is solved with a dirty solution - looping through the same promise continuously until the error eventually is no longer caught, then the process finishes executing successfully.
+Another server-side complication is brought by `ItemNotFound` exception during the `init` method, precisely while performing a **get** request during the first initialization of the table on a freshly created worksheet: The error is thrown temporarily, in a period of approximately 20 seconds. It is solved with a dirty solution - looping through the same promise continuously until the error eventually is no longer caught, then the process finishes executing successfully without user input.
 
->Because of that some unintended behaviour is solved with resending same requests repeatedly
+>Because of server-side complications, some unintended behaviour is solved with resending same requests multiple times.
 
 # Roadmap
 
-- [x] ~~use typescipt app starter~~
-- [x] ~~support for mutiple config providers~~
-- [x] ~~basic Office 365 support using hardcoded list of keys~~
-- [ ] Office 365 login helper
-- [x] ~~support for adding of new columns in runtime~~
-- [ ] support for running as Azure Function
+- [x] ~~Use typescipt app starter~~
+- [x] ~~Support for multiple config providers~~
+- [x] ~~Basic Office 365 support using hardcoded list of keys~~
+- [x] ~~Office 365 login helper~~
+- [x] ~~Support for adding of new columns in runtime~~
+- [ ] Support for running as Azure Function
 - [ ] Azure Table Queue support for `store` method
