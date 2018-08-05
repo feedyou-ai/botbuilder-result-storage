@@ -40,6 +40,14 @@ npm start
 ```
 npm run watch
 ```
+# Config adapters
+Configuration of this service could be achieved using one of configuration adapters, for example:
+  * environment variables
+  * JSON config file in filesystem
+  * Azure Table Storage (not finished yet)
+  
+Purpose of configuration adapter is to provide list of used storage adapters and configure them approprietly, for example provide them with required login information, storage document IDs/names, etc.
+
 # Storage adapters
 Currently only Office 365 Excel spreadsheet adapter is fully implemented, but library architecture is prepared for other storages.
 
