@@ -1,7 +1,7 @@
-import Config from "../models/config";
+import Config from '../models/config'
 
 export default abstract class ConfigService {
-  config: Config;
+  config: Config
 
   constructor() {
     // this.load().then(config => (this.config = config));
@@ -9,17 +9,17 @@ export default abstract class ConfigService {
 
   get(): Promise<Config> {
     if (this.config) {
-      return new Promise(resolve => resolve(this.config));
+      return new Promise(resolve => resolve(this.config))
     } else {
       return new Promise(resolve =>
         this.load().then((res: any) => {
-          this.config = res;
-          resolve(res);
+          this.config = res
+          resolve(res)
         })
-      );
+      )
     }
   }
 
-  abstract load(): Promise<Config>;
-  abstract save(config: Config): void;
+  abstract load(): Promise<Config>
+  abstract save(config: Config): void
 }

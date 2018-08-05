@@ -1,20 +1,20 @@
-"use strict";
+'use strict'
 
-import * as async from "async";
-import * as request from "request";
-import { Response, Request, NextFunction } from "express";
+import * as async from 'async'
+import * as request from 'request'
+import { Response, Request, NextFunction } from 'express'
 
 // TODO inject somehow from app
-import EnvConfigService from "../services/config/env";
-const configService = new EnvConfigService();
+import EnvConfigService from '../services/config/env'
+const configService = new EnvConfigService()
 
 /**
  * GET /api/storages
  * Get list of all storages
  */
 export let get = (req: Request, res: Response) => {
-  configService.get().then(config => res.end(JSON.stringify(config.adapters)));
-};
+  configService.get().then(config => res.end(JSON.stringify(config.adapters)))
+}
 
 /**
  * POST /api/store
@@ -22,19 +22,19 @@ export let get = (req: Request, res: Response) => {
  */
 export let store = (req: Request, res: Response) => {
   if (!req.body || !req.body.data) {
-    throw new Error('Cannot find "data" object in request body.');
+    throw new Error('Cannot find "data" object in request body.')
   }
 
-  const { data, keys, userData } = req.body;
+  const { data, keys, userData } = req.body
   configService
     .get()
     .then(config => {
       Promise.all(config.adapters.map(adapter => adapter.store(data, keys, userData)))
         .then(results => res.end(JSON.stringify(results)))
-        .catch(err => returnErrorAsJson(err, res));
+        .catch(err => returnErrorAsJson(err, res))
     })
-    .catch(err => returnErrorAsJson(err, res));
-};
+    .catch(err => returnErrorAsJson(err, res))
+}
 
 /**
  * POST /api/init
@@ -42,21 +42,21 @@ export let store = (req: Request, res: Response) => {
  */
 export let init = (req: Request, res: Response) => {
   if (!req.body || !req.body.header) {
-    throw new Error('Cannot find "header" array in request body.');
+    throw new Error('Cannot find "header" array in request body.')
   }
 
   configService
     .get()
     .then(config => {
-      Promise.all(config.adapters.map(adapter => adapter.init(req.body.header, ["name", "id"])))
+      Promise.all(config.adapters.map(adapter => adapter.init(req.body.header, ['name', 'id'])))
         .then(() => res.end())
-        .catch(err => returnErrorAsJson(err, res));
+        .catch(err => returnErrorAsJson(err, res))
     })
-    .catch(err => returnErrorAsJson(err, res));
-};
+    .catch(err => returnErrorAsJson(err, res))
+}
 
 function returnErrorAsJson(err: Error, res: Response) {
-  console.log(err);
-  res.statusCode = 500;
-  res.end(err.message);
+  console.log(err)
+  res.statusCode = 500
+  res.end(err.message)
 }

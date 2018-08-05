@@ -1,149 +1,149 @@
-import Adapter from "../adapter";
-import * as GraphTypes from "@microsoft/microsoft-graph-types";
-import * as Graph from "@microsoft/microsoft-graph-client";
-import * as request from "superagent";
+import Adapter from '../adapter'
+import * as GraphTypes from '@microsoft/microsoft-graph-types'
+import * as Graph from '@microsoft/microsoft-graph-client'
+import * as request from 'superagent'
 // following two imports throw and error if IMPORTED, but they're fine if REQUIRED
-const xl = require("excel4node");
+const xl = require('excel4node')
 // import * as xl from "excel4node";
-const md5 = require("md5");
+const md5 = require('md5')
 // import * as md5 from "md5";
-import { Error } from "mongoose";
-import { resolve } from "url";
-import { Bool } from "../../../node_modules/aws-sdk/clients/inspector";
-import { MaxKey } from "../../../node_modules/@types/bson";
+import { Error } from 'mongoose'
+import { resolve } from 'url'
+import { Bool } from '../../../node_modules/aws-sdk/clients/inspector'
+import { MaxKey } from '../../../node_modules/@types/bson'
 
 export default class Office extends Adapter {
-  client: Graph.Client;
-  accessToken: string;
+  client: Graph.Client
+  accessToken: string
   configuration: {
-    SheetName: string;
-    ClientId: string;
-    ClientSecret: string;
-    RefreshToken: string;
-    MaxColumns: number;
-  };
+    SheetName: string
+    ClientId: string
+    ClientSecret: string
+    RefreshToken: string
+    MaxColumns: number
+  }
 
   // default first row in the table is row index 4
-  public static DEFAULT_ROW_INDEX = 4;
+  public static DEFAULT_ROW_INDEX = 4
 
   constructor(
     documentId: string,
     config: {
       credentials: {
-        SheetName: string;
-        ClientId: string;
-        ClientSecret: string;
-        RefreshToken: string;
-        MaxColumns: number;
-      };
+        SheetName: string
+        ClientId: string
+        ClientSecret: string
+        RefreshToken: string
+        MaxColumns: number
+      }
     }
   ) {
-    super(documentId, config);
-    this.documentId = documentId;
-    if (typeof config.credentials.MaxColumns === "undefined") config.credentials.MaxColumns = 64;
-    this.configuration = config.credentials;
-    this.adapterId = "office";
+    super(documentId, config)
+    this.documentId = documentId
+    if (typeof config.credentials.MaxColumns === 'undefined') config.credentials.MaxColumns = 64
+    this.configuration = config.credentials
+    this.adapterId = 'office'
 
     console.log(
-      "Sheet Name: " +
+      'Sheet Name: ' +
         config.credentials.SheetName +
-        ", Client ID: " +
+        ', Client ID: ' +
         config.credentials.ClientId +
-        ", Client Secret: " +
+        ', Client Secret: ' +
         config.credentials.ClientSecret
-    );
+    )
 
     this.client = Graph.Client.init({
       authProvider: done => {
         if (this.accessToken) {
-          done(undefined, this.accessToken);
+          done(undefined, this.accessToken)
         } else {
-          console.log("requesting access_token from refresh_token");
+          console.log('requesting access_token from refresh_token')
           request
-            .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
-            .type("form")
+            .post('https://login.microsoftonline.com/common/oauth2/v2.0/token')
+            .type('form')
             .send({
               client_id: config.credentials.ClientId,
               client_secret: config.credentials.ClientSecret,
-              grant_type: "refresh_token",
+              grant_type: 'refresh_token',
               refresh_token: config.credentials.RefreshToken,
-              scope: "Files.ReadWrite.All offline_access"
+              scope: 'Files.ReadWrite.All offline_access'
             })
             .then(res => {
               if (res.body && res.body.access_token) {
-                console.log("Latest access token: ", res.body.access_token);
-                console.log("It expires in: ", res.body.expires_in);
-                this.accessToken = res.body.access_token;
-                done(undefined, res.body.access_token);
+                console.log('Latest access token: ', res.body.access_token)
+                console.log('It expires in: ', res.body.expires_in)
+                this.accessToken = res.body.access_token
+                done(undefined, res.body.access_token)
               } else {
-                done(new Error("access_token not found in token response body"), "");
+                done(new Error('access_token not found in token response body'), '')
               }
             })
-            .catch(err => done(err, ""));
+            .catch(err => done(err, ''))
         }
       }
-    });
+    })
   }
 
   getTableName() {
-    return "FeedbotData_" + this.configuration.SheetName;
+    return 'FeedbotData_' + this.configuration.SheetName
   }
 
   getSheetUrl() {
     return (
-      "/me/drive/items/" + this.documentId + "/workbook/worksheets/" + this.configuration.SheetName
-    );
+      '/me/drive/items/' + this.documentId + '/workbook/worksheets/' + this.configuration.SheetName
+    )
   }
 
   login(config: {}): boolean {
     // TODO implement something like https://github.com/microsoftgraph/nodejs-connect-sample
-    return false;
+    return false
   }
 
   checkForExpectedErrors(err: any = {}, printErr: boolean = true) {
-    if (err.code && err.code === "UnknownError") {
+    if (err.code && err.code === 'UnknownError') {
       // this error occurs completely randomly and is successfully solved by restarting the same process
-      console.error("UnknownError exception caught. Restarting last process.");
-      return true;
-    } else if (err.code && err.code === "InvalidAuthenticationToken") {
+      console.error('UnknownError exception caught. Restarting last process.')
+      return true
+    } else if (err.code && err.code === 'InvalidAuthenticationToken') {
       // this error exception means that access token needs to be refreshed.
-      console.error("Authentication token has expired. Refreshing the token...");
+      console.error('Authentication token has expired. Refreshing the token...')
       // setting this to falsy value will trigger refresh_token request in authProvider
-      this.accessToken = undefined;
-      return true;
+      this.accessToken = undefined
+      return true
     } else {
       // no expected errors found.
-      if (printErr) console.error(err);
-      return false;
+      if (printErr) console.error(err)
+      return false
     }
   }
 
   areArraysEqual(baseArray: string[], array: string[]) {
-    if (baseArray.length !== array.length) return false;
-    const length = Math.max(baseArray.length, array.length);
+    if (baseArray.length !== array.length) return false
+    const length = Math.max(baseArray.length, array.length)
     for (let i = 0; i < length; i++) {
-      if (baseArray[i] != array[i]) return false;
+      if (baseArray[i] != array[i]) return false
     }
-    return true;
+    return true
   }
 
   init(header: string[]): Promise<{}> {
-    console.log("\nInitializing...");
+    console.log('\nInitializing...')
     return new Promise((resolve, reject) => {
-      console.log("initDocument", this.documentId, header);
+      console.log('initDocument', this.documentId, header)
 
       // using excel4node npm package to find desired range (output example: A1:F1)
-      const inputRange = xl.getExcelCellRef(1, 1) + ":" + xl.getExcelCellRef(1, header.length);
+      const inputRange = xl.getExcelCellRef(1, 1) + ':' + xl.getExcelCellRef(1, header.length)
 
-      const sheetUrl = this.getSheetUrl();
+      const sheetUrl = this.getSheetUrl()
 
       const patchTable = (table: any = {}) => {
         // patch table settings: rename it and add first row
         const request = () => {
           // update table name
-          console.log("updating table name from %s to %s", table.name, this.getTableName());
+          console.log('updating table name from %s to %s', table.name, this.getTableName())
           this.client
-            .api(sheetUrl + "/tables/" + table.id)
+            .api(sheetUrl + '/tables/' + table.id)
             .patch({
               // forcing the name of the table to be static, because each language
               // makes default table name
@@ -153,30 +153,30 @@ export default class Office extends Adapter {
               const request = () => {
                 // getting table rows
                 this.client
-                  .api(sheetUrl + "/tables/" + this.getTableName() + "/rows")
+                  .api(sheetUrl + '/tables/' + this.getTableName() + '/rows')
                   .get()
                   .then(rows => {
                     //  checking if there already are first two rows
                     if (rows.value[1]) {
-                      resolve();
+                      resolve()
                     } else {
                       console.log(
-                        "adding first row to solve unintended expansion of first named item"
-                      );
+                        'adding first row to solve unintended expansion of first named item'
+                      )
                       const request = () => {
                         // add empty first row
                         this.client
-                          .api(sheetUrl + "/tables/" + this.getTableName() + "/rows")
+                          .api(sheetUrl + '/tables/' + this.getTableName() + '/rows')
                           .post({})
                           .then((row: GraphTypes.WorkbookTableRow) => {
-                            console.log("initialization finished. Ready for storage");
-                            resolve();
+                            console.log('initialization finished. Ready for storage')
+                            resolve()
                           })
                           .catch(err => {
-                            this.checkForExpectedErrors(err) ? request() : reject(err);
-                          });
-                      };
-                      request();
+                            this.checkForExpectedErrors(err) ? request() : reject(err)
+                          })
+                      }
+                      request()
                     }
                   })
                   .catch(err => {
@@ -186,22 +186,22 @@ export default class Office extends Adapter {
                     // server-side error. Thats why scanning for the exact error code eliminates the problem, it gets into a loop
                     // until (usually in about 20s) the server would finally handle itself and behave correctly.
                     // poor user input isn't handled here, so it wouldn't trigger an infinite loop.
-                    this.checkForExpectedErrors(err, false) || err.code === "ItemNotFound"
+                    this.checkForExpectedErrors(err, false) || err.code === 'ItemNotFound'
                       ? request()
-                      : reject(err);
-                  });
-              };
-              request();
+                      : reject(err)
+                  })
+              }
+              request()
             })
             .catch(err => {
-              this.checkForExpectedErrors(err) ? request() : reject(err);
-            });
-        };
-        request();
-      };
+              this.checkForExpectedErrors(err) ? request() : reject(err)
+            })
+        }
+        request()
+      }
       const request = () => {
         // check existence of document and sheet
-        console.log("checking if document exists...");
+        console.log('checking if document exists...')
         this.client
           .api(sheetUrl)
           .get()
@@ -209,45 +209,45 @@ export default class Office extends Adapter {
             const request = () => {
               // check existence of document table
               this.client
-                .api(sheetUrl + "/tables")
+                .api(sheetUrl + '/tables')
                 .get()
                 .then((tables: { value: GraphTypes.WorkbookTable[] }) => {
                   // checking table existence
                   if (tables.value.length > 0) {
                     // checking table health, because sometimes after UnknownError occurs during init, table stays unfinished
-                    console.log("table already exists:\n", tables.value.map((a: any) => a.name));
-                    console.log("checking table health...");
+                    console.log('table already exists:\n', tables.value.map((a: any) => a.name))
+                    console.log('checking table health...')
                     // checking table header length, in case user wants to use init to extend the table
                     this.getSheetHeader().then((sheetHeader: any) => {
                       if (!this.areArraysEqual(sheetHeader, header)) {
-                        console.log("Updating header...");
-                        this.updateHeaders(sheetUrl, header);
+                        console.log('Updating header...')
+                        this.updateHeaders(sheetUrl, header)
                       }
-                    });
+                    })
                     if (tables.value[0].name != this.getTableName()) {
                       // checking table name
                       console.log(
                         "...and it seems that something is not right with it's name... Applying table update..."
-                      );
-                      patchTable(tables.value[0]);
+                      )
+                      patchTable(tables.value[0])
                     } else {
                       const request = () => {
                         // perform a GET request to get rows array to check if there is the first row inserted
                         this.client
-                          .api(sheetUrl + "/tables/" + this.getTableName() + "/rows")
+                          .api(sheetUrl + '/tables/' + this.getTableName() + '/rows')
                           .get()
                           .then(rows => {
                             // checking if there is a first row added to the table. if not, then patch the table
                             if (rows.value[1]) {
                               console.log(
-                                "...and everything seems to be correct with the table format. Safe to use."
-                              );
-                              resolve({});
+                                '...and everything seems to be correct with the table format. Safe to use.'
+                              )
+                              resolve({})
                             } else {
                               console.log(
                                 "...and it seems that something is not right with it's rows... Applying table update..."
-                              );
-                              patchTable(tables.value[0]);
+                              )
+                              patchTable(tables.value[0])
                             }
                           })
                           .catch(err => {
@@ -256,179 +256,179 @@ export default class Office extends Adapter {
                               ? request()
                               : console.log(
                                   "...and it seems that something is not right with it's rows... Applying table update..."
-                                ) && patchTable(tables.value[0]);
-                          });
-                      };
-                      request();
+                                ) && patchTable(tables.value[0])
+                          })
+                      }
+                      request()
                     }
                   } else {
-                    console.log("table does not exist, creating header first:", header);
+                    console.log('table does not exist, creating header first:', header)
                     // insert header range
                     this.updateHeaders(sheetUrl, header)
                       .then(res => {
-                        console.log("now creating table");
+                        console.log('now creating table')
                         const request = () => {
                           // create table
                           this.client
-                            .api(sheetUrl + "/tables/add")
+                            .api(sheetUrl + '/tables/add')
                             .post({
                               address: inputRange,
                               hasHeaders: true
                             })
                             .then(table => {
                               // table has been created. Now apply the necessary modifications
-                              patchTable(table);
+                              patchTable(table)
                             })
                             .catch(err => {
-                              this.checkForExpectedErrors(err) ? request() : reject(err);
-                            });
-                        };
-                        request();
+                              this.checkForExpectedErrors(err) ? request() : reject(err)
+                            })
+                        }
+                        request()
                       })
                       .catch(err => {
-                        this.checkForExpectedErrors(err) ? request() : reject(err);
-                      });
+                        this.checkForExpectedErrors(err) ? request() : reject(err)
+                      })
                   }
                 })
                 .catch(err => {
-                  this.checkForExpectedErrors(err) ? request() : reject(err);
-                });
-            };
-            request();
+                  this.checkForExpectedErrors(err) ? request() : reject(err)
+                })
+            }
+            request()
           })
           .catch(err => {
             this.checkForExpectedErrors(err)
               ? request()
-              : console.log("\nERROR: Couldn't find the document.\n") && reject(err);
-          });
-      };
-      request();
-    });
+              : console.log("\nERROR: Couldn't find the document.\n") && reject(err)
+          })
+      }
+      request()
+    })
   }
 
   async store(data: any, keys: string[]): Promise<{}> {
-    console.log("\nStoring data...");
+    console.log('\nStoring data...')
     return new Promise(async (resolve, reject) => {
       // get named item ID from keys values using md5
-      const rowKeyColumns = keys;
-      const inputKeys = Object.keys(data).filter(dataKey => rowKeyColumns.includes(dataKey));
-      const rowKeyValues = inputKeys.map(dataKey => data[dataKey]);
+      const rowKeyColumns = keys
+      const inputKeys = Object.keys(data).filter(dataKey => rowKeyColumns.includes(dataKey))
+      const rowKeyValues = inputKeys.map(dataKey => data[dataKey])
       if (this.areArraysEqual(keys, inputKeys)) {
       } else {
         resolve(
           '\nBad request. Some key values missing. Storing process aborted. Have you forgotten to define or provide the "keys" array? Check these values: [' +
             keys +
-            "]"
-        );
-        throw new Error("\nBad request. Some key values missing. Storing process aborted.");
+            ']'
+        )
+        throw new Error('\nBad request. Some key values missing. Storing process aborted.')
       }
-      const rowKey = rowKeyValues.join("#");
-      const namedItemId = "row" + md5("row-" + rowKey).substr(0, 8);
+      const rowKey = rowKeyValues.join('#')
+      const namedItemId = 'row' + md5('row-' + rowKey).substr(0, 8)
 
-      console.log("\nstore row", data);
-      let dataHeader = Object.keys(data);
-      let sheetHeader: any = await this.getSheetHeader();
-      console.log("sheet vs data header", sheetHeader, dataHeader);
+      console.log('\nstore row', data)
+      let dataHeader = Object.keys(data)
+      let sheetHeader: any = await this.getSheetHeader()
+      console.log('sheet vs data header', sheetHeader, dataHeader)
 
-      const sheetUrl = this.getSheetUrl();
+      const sheetUrl = this.getSheetUrl()
 
       // update headers
       // fix spreadsheet header first
-      const missingHeaders = dataHeader.filter(col => !sheetHeader.includes(col) && col != "");
+      const missingHeaders = dataHeader.filter(col => !sheetHeader.includes(col) && col != '')
       if (missingHeaders[0]) {
-        sheetHeader = [...sheetHeader, ...missingHeaders];
-        console.log("adding missing headers: " + missingHeaders);
+        sheetHeader = [...sheetHeader, ...missingHeaders]
+        console.log('adding missing headers: ' + missingHeaders)
       }
 
       // fix dataHeader
       if (sheetHeader.length === dataHeader.length) {
       } else if (sheetHeader.length > dataHeader.length) {
         // if incoming dataHeader is too short - extend it
-        dataHeader = sheetHeader.filter((col: any) => dataHeader.includes(col));
+        dataHeader = sheetHeader.filter((col: any) => dataHeader.includes(col))
       }
 
-      this.updateHeaders(sheetUrl, sheetHeader);
+      this.updateHeaders(sheetUrl, sheetHeader)
 
       // rearrange item values
-      const values = sheetHeader.map((key: any) => data[key] || undefined);
+      const values = sheetHeader.map((key: any) => data[key] || undefined)
 
-      console.log("rowKey", rowKey, namedItemId, values);
+      console.log('rowKey', rowKey, namedItemId, values)
 
       // try to update named item - if fails then insert
       const updateItem = (reAddIfFailed: boolean = true) => {
         const request = () => {
           this.client
-            .api(sheetUrl + "/names/" + namedItemId + "/range")
+            .api(sheetUrl + '/names/' + namedItemId + '/range')
             .patch({ values: [values] })
             .then((range: GraphTypes.WorkbookRange) => {
-              console.log("named item range update successful at", range.address);
-              resolve({ rowIndex: range.rowIndex });
+              console.log('named item range update successful at', range.address)
+              resolve({ rowIndex: range.rowIndex })
             })
             .catch(err => {
               // UnknownError is very harmful. If detected - restart the request.
-              if (this.checkForExpectedErrors(err, false)) request();
+              if (this.checkForExpectedErrors(err, false)) request()
               else {
                 // if true, then after failing updating an item, it will try to delete and readd the item back
                 // if false, then after failing updating an item, it will just throw an error
                 if (reAddIfFailed) {
-                  console.error("cannot update range ->", err.code);
+                  console.error('cannot update range ->', err.code)
 
-                  if (err.code === "InvalidArgument") {
+                  if (err.code === 'InvalidArgument') {
                     // if err.code ===  'InvalidArgument', it probably means that an item with namedItemId exists,
                     // but cannot be updated, because request and current item do not match (ex. header too large)
-                    console.log(err.code + " exception found. Trying to delete previous item...");
+                    console.log(err.code + ' exception found. Trying to delete previous item...')
                     const request = () => {
                       this.reAddItem(namedItemId, values)
                         .then((res: any) => {
                           // if promise successful, reAddItem should resolve a boolean value equal to false
                           // pass it to updateItem in order to update row values without triggering item re-adding loop.
-                          updateItem(res);
+                          updateItem(res)
                         })
                         .catch(err => {
-                          this.checkForExpectedErrors(err) ? request() : reject(err);
-                        });
-                    };
-                    request();
+                          this.checkForExpectedErrors(err) ? request() : reject(err)
+                        })
+                    }
+                    request()
                   } else {
                     // attempt to add new row if err.code === "ItemAlreadyExists" or "ItemNotFound" or any other one
                     const request = () => {
                       this.addNewRow(namedItemId, values)
                         .then(res => {
-                          resolve(res);
+                          resolve(res)
                         })
                         .catch(err => {
-                          this.checkForExpectedErrors(err) ? request() : reject(err);
-                        });
-                    };
-                    request();
+                          this.checkForExpectedErrors(err) ? request() : reject(err)
+                        })
+                    }
+                    request()
                   }
                 } else {
-                  console.log("Failed to update the values after re-adding them:", err) ||
-                    reject(err);
+                  console.log('Failed to update the values after re-adding them:', err) ||
+                    reject(err)
                 }
               }
-            });
-        };
-        request();
-      };
-      updateItem(true);
-    });
+            })
+        }
+        request()
+      }
+      updateItem(true)
+    })
   }
 
   private async updateHeaders(sheetUrl: string, header: string[]) {
     const inputRange =
-      "'" + xl.getExcelCellRef(1, 1) + ":" + xl.getExcelCellRef(1, header.length) + "'";
+      "'" + xl.getExcelCellRef(1, 1) + ':' + xl.getExcelCellRef(1, header.length) + "'"
     return this.client
-      .api(sheetUrl + "/range(address=" + inputRange + ")")
+      .api(sheetUrl + '/range(address=' + inputRange + ')')
       .patch({ values: [header] })
       .then(res => {
-        console.log("Header updated: [" + header + "] (" + inputRange + ")");
+        console.log('Header updated: [' + header + '] (' + inputRange + ')')
       })
       .catch(err => {
         this.checkForExpectedErrors(err)
           ? this.updateHeaders(sheetUrl, header)
-          : console.error("Failed updating headers", err);
-      });
+          : console.error('Failed updating headers', err)
+      })
   }
 
   private async getSheetHeader() {
@@ -436,46 +436,46 @@ export default class Office extends Adapter {
     const inputRange =
       "'" +
       xl.getExcelCellRef(1, 1) +
-      ":" +
+      ':' +
       xl.getExcelCellRef(1, this.configuration.MaxColumns) +
-      "'";
+      "'"
     return new Promise((resolve, reject) => {
       const request = () => {
         this.client
-          .api(this.getSheetUrl() + "/range(address=" + inputRange + ")")
+          .api(this.getSheetUrl() + '/range(address=' + inputRange + ')')
           .get()
           .then((range: GraphTypes.WorkbookRange) => {
-            range.values[0] = range.values[0].filter((h: any) => h != "");
-            resolve(range.values[0]);
+            range.values[0] = range.values[0].filter((h: any) => h != '')
+            resolve(range.values[0])
           })
           .catch(err => {
-            this.checkForExpectedErrors(err) ? request() : reject(err);
-          });
-      };
-      request();
-    });
+            this.checkForExpectedErrors(err) ? request() : reject(err)
+          })
+      }
+      request()
+    })
   }
 
   private async reAddItem(namedItemId: string, values: any[]) {
-    const sheetUrl = this.getSheetUrl();
-    let namedItemRowIndex = Office.DEFAULT_ROW_INDEX;
+    const sheetUrl = this.getSheetUrl()
+    let namedItemRowIndex = Office.DEFAULT_ROW_INDEX
     return new Promise((resolve, reject) => {
       // define tryReAdding reference to execute later
       const tryReAdding = (RowIndex: number) => {
         const request = () => {
           // deleting old item to insert a new, correct one, right after
           this.client
-            .api(sheetUrl + "/names/" + namedItemId)
+            .api(sheetUrl + '/names/' + namedItemId)
             .delete()
             .then((row: GraphTypes.WorkbookTableRow) => {
               console.log(
-                namedItemId + " named item deleted, trying to add new range on row %s...",
+                namedItemId + ' named item deleted, trying to add new range on row %s...',
                 RowIndex
-              );
+              )
               const request = () => {
                 // adding new range of an item, which is different than the old one
                 this.client
-                  .api(sheetUrl + "/names/add")
+                  .api(sheetUrl + '/names/add')
                   .post({
                     name: namedItemId,
                     // building reference. format example:   =List1!$A$5:$F$5
@@ -485,72 +485,72 @@ export default class Office extends Adapter {
                   })
                   .then((namedItem: GraphTypes.WorkbookNamedItem) => {
                     console.log(
-                      "named item range added at row index " +
+                      'named item range added at row index ' +
                         RowIndex +
-                        ". now trying to update its values..."
-                    );
+                        '. now trying to update its values...'
+                    )
                     // send 'false' to pass it into updateItem(bool) function later in the 'store' function.
-                    resolve(false);
+                    resolve(false)
                   })
                   .catch(err => {
-                    this.checkForExpectedErrors(err) ? request() : reject(err);
-                  });
-              };
-              request();
+                    this.checkForExpectedErrors(err) ? request() : reject(err)
+                  })
+              }
+              request()
             })
             .catch(err => {
-              this.checkForExpectedErrors(err) ? request() : reject(err);
-            });
-        };
-        request();
-      };
+              this.checkForExpectedErrors(err) ? request() : reject(err)
+            })
+        }
+        request()
+      }
       // try getting namedItemRowIndex
       const request = () => {
         this.client
-          .api(sheetUrl + "/names/" + namedItemId)
+          .api(sheetUrl + '/names/' + namedItemId)
           .get()
           .then(namedItem => {
             // parsing last symbol from named item value (it looks like this: List1!$A$7:$H$7)
-            const regmatch = namedItem.value.match(/\$.$/);
-            namedItemRowIndex = parseInt(regmatch[0].substring(1));
+            const regmatch = namedItem.value.match(/\$.$/)
+            namedItemRowIndex = parseInt(regmatch[0].substring(1))
             // setting default value if parsing was unsuccessful
-            if (isNaN(namedItemRowIndex)) namedItemRowIndex = Office.DEFAULT_ROW_INDEX;
+            if (isNaN(namedItemRowIndex)) namedItemRowIndex = Office.DEFAULT_ROW_INDEX
             // deleting old named item
-            tryReAdding(namedItemRowIndex);
+            tryReAdding(namedItemRowIndex)
           })
           .catch(err => {
-            if (this.checkForExpectedErrors(err, false)) request();
+            if (this.checkForExpectedErrors(err, false)) request()
             else {
               // if retrieving row index was unsuccessful, just set it to a default value and continue.
-              namedItemRowIndex = Office.DEFAULT_ROW_INDEX;
+              namedItemRowIndex = Office.DEFAULT_ROW_INDEX
               console.log(
                 "couldn't retrieve row index, because of exception: ",
                 err.code,
-                ". Setting default row index value to ",
+                '. Setting default row index value to ',
                 namedItemRowIndex
-              );
-              tryReAdding(namedItemRowIndex);
+              )
+              tryReAdding(namedItemRowIndex)
             }
-          });
-      };
-      request();
-    });
+          })
+      }
+      request()
+    })
   }
 
   private async addNewRow(namedItemId: string, values: any[]) {
-    const sheetUrl = this.getSheetUrl();
+    const sheetUrl = this.getSheetUrl()
     return new Promise((resolve, reject) => {
       const request = () => {
         this.client
-          .api(sheetUrl + "/tables/" + this.getTableName() + "/rows")
+          .api(sheetUrl + '/tables/' + this.getTableName() + '/rows')
           .post({ values: [values] })
           .then((row: GraphTypes.WorkbookTableRow) => {
             // make a function reference to execute later
             const createRowNamedItem = (retryWhenFail: boolean) => {
-              console.log("try to add named item for new row with id %s", namedItemId);
+              console.log('try to add named item for new row with id %s', namedItemId)
               const request = () => {
                 this.client
-                  .api(sheetUrl + "/names/add")
+                  .api(sheetUrl + '/names/add')
                   .post({
                     name: namedItemId,
                     // building reference. format: '=List1!$A$5:$F$5'
@@ -558,43 +558,43 @@ export default class Office extends Adapter {
                       2}:$${xl.getExcelAlpha(values.length)}$${row.index + 2}`
                   })
                   .then((namedItem: GraphTypes.WorkbookNamedItem) => {
-                    console.log("named item added");
-                    resolve({ rowIndex: row.index });
+                    console.log('named item added')
+                    resolve({ rowIndex: row.index })
                   })
                   .catch(err => {
-                    if (this.checkForExpectedErrors(err, false)) request();
+                    if (this.checkForExpectedErrors(err, false)) request()
                     else {
                       // named item probably already exists (row was manually deleted and named item remained with #REF! value)
                       if (retryWhenFail) {
-                        console.log("named item failed to add, try to delete it first", err.code);
+                        console.log('named item failed to add, try to delete it first', err.code)
                         const request = () => {
                           this.client
-                            .api(sheetUrl + "/names/" + namedItemId)
+                            .api(sheetUrl + '/names/' + namedItemId)
                             .delete()
                             .then((namedItem: GraphTypes.WorkbookNamedItem) => {
-                              console.log("named item deleted, retrying to add it");
-                              createRowNamedItem(false);
+                              console.log('named item deleted, retrying to add it')
+                              createRowNamedItem(false)
                             })
                             .catch(err => {
-                              this.checkForExpectedErrors(err) ? request() : reject(err);
-                            });
-                        };
-                        request();
+                              this.checkForExpectedErrors(err) ? request() : reject(err)
+                            })
+                        }
+                        request()
                       } else {
-                        reject(err);
+                        reject(err)
                       }
                     }
-                  });
-              };
-              request();
-            };
-            createRowNamedItem(true);
+                  })
+              }
+              request()
+            }
+            createRowNamedItem(true)
           })
           .catch(err => {
-            this.checkForExpectedErrors(err) ? request() : reject(err);
-          });
-      };
-      request();
-    });
+            this.checkForExpectedErrors(err) ? request() : reject(err)
+          })
+      }
+      request()
+    })
   }
 }

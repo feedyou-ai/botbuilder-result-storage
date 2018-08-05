@@ -1,21 +1,21 @@
 export default abstract class Adapter {
-  adapterId: string;
-  documentId: string;
+  adapterId: string
+  documentId: string
   config: {
-    credentials: {};
-  };
+    credentials: {}
+  }
 
   constructor(
     documentId: string,
     config: {
-      credentials: {};
+      credentials: {}
     }
   ) {
-    this.documentId = documentId;
-    this.config = config;
+    this.documentId = documentId
+    this.config = config
   }
 
-  abstract login(config: {}): boolean;
-  abstract init(header: string[], keys: string[]): Promise<{}>;
-  abstract store(data: {}, keys: string[], userData?: {}): Promise<{}>;
+  abstract login(config: {}): boolean
+  abstract init(header: string[], keys: string[]): Promise<{}>
+  abstract store(data: {}, keys: string[], userData?: {}): Promise<{}>
 }
