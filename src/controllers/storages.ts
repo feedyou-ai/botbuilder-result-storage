@@ -25,11 +25,12 @@ export let store = (req: Request, res: Response) => {
     throw new Error('Cannot find "data" object in request body.')
   }
 
-  const { data, keys, userData } = req.body
+  const { data, keys } = req.body
+  const documentId = process.env.StorageDocumentId
   configService
     .get()
     .then(config => {
-      Promise.all(config.adapters.map(adapter => adapter.store(data, keys, userData)))
+      Promise.all(config.adapters.map(adapter => adapter.store(data, keys, documentId)))
         .then(results => res.end(JSON.stringify(results)))
         .catch(err => returnErrorAsJson(err, res))
     })
@@ -48,7 +49,7 @@ export let init = (req: Request, res: Response) => {
   configService
     .get()
     .then(config => {
-      Promise.all(config.adapters.map(adapter => adapter.init(req.body.header, ['name', 'id'])))
+      Promise.all(config.adapters.map(adapter => adapter.init(req.body.header)))
         .then(() => res.end())
         .catch(err => returnErrorAsJson(err, res))
     })

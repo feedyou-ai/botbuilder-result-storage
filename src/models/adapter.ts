@@ -1,6 +1,8 @@
 export default abstract class Adapter {
   adapterId: string
   documentId: string
+  sheet: any
+  tableService: any
   config: {
     credentials: {}
   }
@@ -16,6 +18,6 @@ export default abstract class Adapter {
   }
 
   abstract login(config: {}): boolean
-  abstract init(header: string[], keys: string[]): Promise<{}>
-  abstract store(data: {}, keys: string[], userData?: {}): Promise<{}>
+  abstract init(header: string[]): Promise<{}>
+  abstract store(data: {}, keys: string[], documentId: string): Promise<{}>
 }
