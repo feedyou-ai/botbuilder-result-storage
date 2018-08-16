@@ -5,6 +5,10 @@ import Office from '../../models/adapters/office'
 import { Credentials } from '../../../node_modules/aws-sdk'
 
 export default class EnvConfigService extends ConfigService {
+  constructor() {
+    super()
+  }
+
   load(): Promise<Config> {
     return new Promise(resolve => {
       const config = new Config()

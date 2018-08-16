@@ -51,117 +51,125 @@ export default class Google extends Adapter {
 
   // data = { "name": "Jan", "id": "a1b2c3", ...}
   // keys = [ "name", "id" ]
-  store(data: any, keys: string[], documentId: string) {
+  store(data: any, keys: any, documentId: string) {
+    data = JSON.parse(data)
+    keys = data.keys || JSON.parse(keys)
     const adapter = this
     let tableService: any = {}
 
     return new Promise((resolve, reject) => {
-      this.checkConnection(Object.keys(data))
-        .then(() => {
-          async.waterfall(
-            [
-              function createTableStorage(callback: any) {
-                tableService = getTableService()
-                tableService.createTableIfNotExists(
-                  TABLENAME,
-                  (error: Error, result: any, response: any) => {
-                    error && console.error(error) && callback(error)
-                  }
-                )
-
-                const rowKey = md5(keys.map((key: string) => data[key] || '').join(''))
-                // documentId = process.env['StorageDocumentId']
-                const partitionKey = documentId
-
-                callback(undefined, partitionKey, rowKey)
-              },
-
-              function getSheetRowIndex(partitionKey: string, rowKey: string, callback: any) {
-                // try to get an existing entity
-                tableService.retrieveEntity(
-                  TABLENAME,
-                  partitionKey,
-                  rowKey,
-                  (error: Error, result: any, response: any) => {
-                    if (!error || (result && result.SheetRowIndex._)) {
-                      console.log('Entity at row', result.SheetRowIndex._, 'already exists')
-                      callback(undefined, result.SheetRowIndex._)
-
-                      // @ts-ignore
-                    } else if (error.code && error.code === 'ResourceNotFound') {
-                      // entity doesn't exist - create one
-                      adapter.document.getRows(SHEET_INDEX, (err: Error, rows: Row[]) => {
-                        // console.log('ROWS:', rows)
-                        const rowIndex = rows.length + 2
-                        const entityGenerator = azure.TableUtilities.entityGenerator
-                        const entity = {
-                          PartitionKey: entityGenerator.String(partitionKey),
-                          RowKey: entityGenerator.String(rowKey),
-                          SheetRowIndex: entityGenerator.String(rowIndex)
-                        }
-                        console.log('INSERTING NEW ENTITY:'.toLowerCase(), entity)
-                        tableService.insertEntity(
-                          TABLENAME,
-                          entity,
-                          (error: Error, result: any, response: any) => {
-                            if (!error) {
-                              if (result) {
-                                callback(undefined, rowIndex)
-                              }
-                            } else error && console.error(error) && callback(error)
-                          }
-                        )
-                      })
-                    } else {
+      if (keys !== undefined) {
+        this.checkConnection(Object.keys(data))
+          .then(() => {
+            async.waterfall(
+              [
+                function createTableStorage(callback: any) {
+                  tableService = getTableService()
+                  tableService.createTableIfNotExists(
+                    TABLENAME,
+                    (error: Error, result: any, response: any) => {
                       error && console.error(error) && callback(error)
                     }
-                  }
-                )
-              },
+                  )
 
-              function getUpdatedRowCells(rowAtIndex: string, callback: any) {
-                adapter.sheet.getCells(
-                  {
-                    'min-row': rowAtIndex,
-                    'max-row': rowAtIndex,
-                    'min-col': 1,
-                    'max-col': adapter.header.length,
-                    'return-empty': true
-                  },
-                  (err: Error, cells: Cell[]) => callback(err, cells, rowAtIndex)
-                )
-              },
+                  const rowKey = md5(keys.map((key: string) => data[key] || '').join(''))
+                  // documentId = process.env['StorageDocumentId']
+                  const partitionKey = documentId
 
-              function setUpdateValues(updateRowCells: Cell[], rowAtIndex: string, callback: any) {
-                const columnPositions = Object.keys(data).map(
-                  column => adapter.header.indexOf(column) + 1
-                )
+                  callback(undefined, partitionKey, rowKey)
+                },
 
-                console.log(
-                  'Set data ' +
-                    JSON.stringify(data) +
-                    ' to column positions ' +
-                    columnPositions +
-                    ' on row ' +
-                    rowAtIndex
-                )
+                function getSheetRowIndex(partitionKey: string, rowKey: string, callback: any) {
+                  // try to get an existing entity
+                  tableService.retrieveEntity(
+                    TABLENAME,
+                    partitionKey,
+                    rowKey,
+                    (error: Error, result: any, response: any) => {
+                      if (!error || (result && result.SheetRowIndex._)) {
+                        console.log('Entity at row', result.SheetRowIndex._, 'already exists')
+                        callback(undefined, result.SheetRowIndex._)
 
-                updateRowCells.map(cell => {
-                  const dataIndex = columnPositions.indexOf(cell.col)
-                  if (dataIndex >= 0) {
-                    cell.value = _.values(data)[dataIndex]
-                  }
-                })
+                        // @ts-ignore
+                      } else if (error.code && error.code === 'ResourceNotFound') {
+                        // entity doesn't exist - create one
+                        adapter.document.getRows(SHEET_INDEX, (err: Error, rows: Row[]) => {
+                          // console.log('ROWS:', rows)
+                          const rowIndex = rows.length + 2
+                          const entityGenerator = azure.TableUtilities.entityGenerator
+                          const entity = {
+                            PartitionKey: entityGenerator.String(partitionKey),
+                            RowKey: entityGenerator.String(rowKey),
+                            SheetRowIndex: entityGenerator.String(rowIndex)
+                          }
+                          console.log('INSERTING NEW ENTITY:'.toLowerCase(), entity)
+                          tableService.insertEntity(
+                            TABLENAME,
+                            entity,
+                            (error: Error, result: any, response: any) => {
+                              if (!error) {
+                                if (result) {
+                                  callback(undefined, rowIndex)
+                                }
+                              } else error && console.error(error) && callback(error)
+                            }
+                          )
+                        })
+                      } else {
+                        error && console.error(error) && callback(error)
+                      }
+                    }
+                  )
+                },
 
-                adapter.sheet.bulkUpdateCells(updateRowCells, callback(rowAtIndex))
+                function getUpdatedRowCells(rowAtIndex: string, callback: any) {
+                  adapter.sheet.getCells(
+                    {
+                      'min-row': rowAtIndex,
+                      'max-row': rowAtIndex,
+                      'min-col': 1,
+                      'max-col': adapter.header.length,
+                      'return-empty': true
+                    },
+                    (err: Error, cells: Cell[]) => callback(err, cells, rowAtIndex)
+                  )
+                },
+
+                function setUpdateValues(
+                  updateRowCells: Cell[],
+                  rowAtIndex: string,
+                  callback: any
+                ) {
+                  const columnPositions = Object.keys(data).map(
+                    column => adapter.header.indexOf(column) + 1
+                  )
+
+                  console.log(
+                    'Set data ' +
+                      JSON.stringify(data) +
+                      ' to column positions ' +
+                      columnPositions +
+                      ' on row ' +
+                      rowAtIndex
+                  )
+
+                  updateRowCells.map(cell => {
+                    const dataIndex = columnPositions.indexOf(cell.col)
+                    if (dataIndex >= 0) {
+                      cell.value = _.values(data)[dataIndex]
+                    }
+                  })
+
+                  adapter.sheet.bulkUpdateCells(updateRowCells, callback(rowAtIndex))
+                }
+              ],
+              (rowAtIndex: string) => {
+                resolve({ rowAtIndex })
               }
-            ],
-            (rowAtIndex: string) => {
-              resolve({ rowAtIndex })
-            }
-          )
-        })
-        .catch(reject)
+            )
+          })
+          .catch(reject)
+      } else reject("storing request 'keys' value not set")
     })
   }
 

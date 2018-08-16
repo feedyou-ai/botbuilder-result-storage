@@ -1,13 +1,14 @@
 {
-  "name": "express-typescript-starter",
+  "name": "botbuilder-result-storage",
   "version": "0.1.0",
-  "description": "A starting point for Node.js express apps with TypeScript",
+  "description": "",
   "repository": {
     "type": "git",
     "url": "https://github.com/Microsoft/TypeScript-Node-Starter"
   },
-  "author": "Bowden Kelly",
+  "author": "",
   "license": "MIT",
+  "main": "dist/index.js",
   "scripts": {
     "start": "npm run serve",
     "build": "npm run build-ts && npm run tslint",
