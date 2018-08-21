@@ -17,5 +17,5 @@ export default abstract class Adapter {
 
   abstract login(config: {}): boolean
   abstract init(header: string[], keys: string[]): Promise<{}>
-  abstract store(data: {}, keys: string[], userData?: {}): Promise<{}>
+  abstract store(data: {}, keys?: string[], userData?: {}): Promise<{}>
 }
