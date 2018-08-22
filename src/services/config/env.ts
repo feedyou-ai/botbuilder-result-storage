@@ -2,7 +2,7 @@ import Config from '../../models/config'
 import ConfigService from '../config'
 import Google from '../../models/adapters/google'
 import Office from '../../models/adapters/office'
-import SuccessFactor from '../../models/adapters/successfactor'
+import SuccessFactors from '../../models/adapters/successfactors'
 import { Credentials } from '../../../node_modules/aws-sdk'
 
 export default class EnvConfigService extends ConfigService {
@@ -39,7 +39,7 @@ export default class EnvConfigService extends ConfigService {
       ) {
         // SF
         config.addAdapter(
-          new SuccessFactor('', {
+          new SuccessFactors('', {
             credentials: {
               UserId: process.env.ResultStorageSuccessFactorsCompanyId,
               UserName: process.env.ResultStorageSuccessFactorsCompanyUsername,

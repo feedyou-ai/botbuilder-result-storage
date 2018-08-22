@@ -25,6 +25,7 @@
   "dependencies": {
     "@microsoft/microsoft-graph-client": "^1.0.0",
     "@types/node-persist": "0.0.33",
+    "@types/xml2js": "^0.4.3",
     "async": "^2.6.0",
     "bcrypt-nodejs": "^0.0.3",
     "bluebird": "^3.5.1",
@@ -53,7 +54,7 @@
     "pug": "^2.0.0-rc.4",
     "request": "^2.83.0",
     "superagent": "^3.8.2",
-    "superagent-logger": "^1.1.0"
+    "xml2js": "^0.4.19"
   },
   "devDependencies": {
     "@microsoft/microsoft-graph-types": "^1.1.0",
