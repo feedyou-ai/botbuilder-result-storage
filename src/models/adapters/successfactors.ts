@@ -35,7 +35,8 @@ export default class SuccessFactors extends Adapter {
     })
   }
 
-  store(data: any) {
+  store(data: any, keys?: any, documentId?: any) {
+    if (typeof data === 'string') data = JSON.parse(data)
     return new Promise((resolve, reject) => {
       if (!data.contactEmail || !data.jobReqId) {
         reject(
@@ -124,7 +125,7 @@ export default class SuccessFactors extends Adapter {
                 json: dataBody
               },
               (error: Error, response: any, body: any) => {
-                if (error) callback(error)
+                if (error) console.log(error) && callback(error)
                 else if (response.body.d) {
                   // successful authorization for Candidate inserting
                   const candidateId = response.body.d.candidateId
