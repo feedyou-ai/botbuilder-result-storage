@@ -1,8 +1,5 @@
 import Adapter from '../adapter'
-import * as xml2js from 'xml2js'
-import * as util from 'util'
 import * as request from 'request'
-import { resolve } from 'bluebird'
 
 type Config = { credentials: {} }
 
@@ -40,15 +37,8 @@ export default class SuccessFactors extends Adapter {
 
   store(data: any) {
     return new Promise((resolve, reject) => {
-      if (
-        !data.contactEmail ||
-        !data.firstName ||
-        !data.lastName ||
-        !data.cellPhone ||
-        !data.country ||
-        !data.jobReqId
-      ) {
-        resolve(
+      if (!data.contactEmail || !data.jobReqId) {
+        reject(
           'Request body format is incorrect. Please set request body to { "data": { "contactEmail": "...", "firstName": "...", "lastName": "...", "country": "...", "cellPhone": "...", "jobReqId": "..." } }'
         )
       } else {
@@ -242,7 +232,6 @@ export default class SuccessFactors extends Adapter {
                 if (err) callback(err)
                 else if (response.statusCode !== 201 || !body) {
                   // NOT FOUND EXCEPTION
-                  console.log(util.inspect(body, false, 0))
                   console.log(
                     'JobApplication REQUEST FAILED WITH ' +
                       response.statusCode +

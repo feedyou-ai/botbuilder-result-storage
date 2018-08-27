@@ -35,7 +35,8 @@ export default class EnvConfigService extends ConfigService {
       if (
         process.env.ResultStorageSuccessFactorsCompanyUsername &&
         process.env.ResultStorageSuccessFactorsCompanyPassword &&
-        process.env.ResultStorageSuccessFactorsCompanyId
+        process.env.ResultStorageSuccessFactorsCompanyId &&
+        process.env.AzureWebJobsStorage
       ) {
         // SF
         config.addAdapter(
