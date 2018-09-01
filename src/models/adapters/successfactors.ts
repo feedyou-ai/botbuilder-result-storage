@@ -85,7 +85,7 @@ export default class SuccessFactors extends Adapter {
             console.log('Candidate with ID', candidateId, 'already exists. Updating...')
             // try to update it
             delete data.primaryEmail // primaryEmail is not upsertable and also it is not used in manageJobApplication()
-            const { jobReqId, ...dataBody } = data // jobReqId
+            const { jobReqId, jobApplicationQuestionResponse, ...dataBody } = data // jobReqId
             dataBody.__metadata = {
               type: 'SFOData.Candidate',
               uri: 'Candidate(' + candidateId + ')'
