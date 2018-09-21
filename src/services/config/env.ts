@@ -2,6 +2,7 @@ import Config from '../../models/config'
 import ConfigService from '../config'
 import Google from '../../models/adapters/google'
 import Office from '../../models/adapters/office'
+import SuccessFactors from '../../models/adapters/successfactors'
 import { Credentials } from '../../../node_modules/aws-sdk'
 
 export default class EnvConfigService extends ConfigService {
@@ -32,6 +33,25 @@ export default class EnvConfigService extends ConfigService {
             })
           )
         }
+      }
+
+      // SuccessFactor
+      if (
+        process.env.ResultStorageSuccessFactorsCompanyUsername &&
+        process.env.ResultStorageSuccessFactorsCompanyPassword &&
+        process.env.ResultStorageSuccessFactorsCompanyId &&
+        process.env.AzureWebJobsStorage
+      ) {
+        // SF
+        config.addAdapter(
+          new SuccessFactors('', {
+            credentials: {
+              UserId: process.env.ResultStorageSuccessFactorsCompanyId,
+              UserName: process.env.ResultStorageSuccessFactorsCompanyUsername,
+              Password: process.env.ResultStorageSuccessFactorsCompanyPassword
+            }
+          })
+        )
       }
 
       // Office365 Excel sheet adapter

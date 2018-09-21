@@ -6,9 +6,9 @@
     "type": "git",
     "url": "https://github.com/Microsoft/TypeScript-Node-Starter"
   },
+  "main": "dist/index.js",
   "author": "",
   "license": "MIT",
-  "main": "dist/index.js",
   "scripts": {
     "start": "npm run serve",
     "build": "npm run build-ts && npm run tslint",
@@ -26,6 +26,7 @@
   "dependencies": {
     "@microsoft/microsoft-graph-client": "^1.0.0",
     "@types/node-persist": "0.0.33",
+    "@types/xml2js": "^0.4.3",
     "async": "^2.6.0",
     "azure-storage": "^2.10.1",
     "bcrypt-nodejs": "^0.0.3",
@@ -41,8 +42,8 @@
     "express-session": "^1.15.6",
     "express-validator": "^4.3.0",
     "fbgraph": "^1.4.1",
-    "google-spreadsheet": "^2.0.4",
-    "lodash": "^4.17.4",
+    "google-spreadsheet": "^2.0.5",
+    "lodash": "^4.17.10",
     "lusca": "^1.5.2",
     "md5": "^2.2.1",
     "mongoose": "^4.13.7",
@@ -52,10 +53,10 @@
     "passport": "^0.4.0",
     "passport-facebook": "^2.1.1",
     "passport-local": "^1.0.0",
-    "pug": "^2.0.0-rc.4",
-    "request": "^2.83.0",
+    "pug": "^2.0.3",
+    "request": "^2.88.0",
     "superagent": "^3.8.2",
-    "superagent-logger": "^1.1.0"
+    "xml2js": "^0.4.19"
   },
   "devDependencies": {
     "@microsoft/microsoft-graph-types": "^1.1.0",
@@ -85,8 +86,8 @@
     "chai": "^4.1.2",
     "concurrently": "^3.5.1",
     "jest": "^21.2.1",
-    "node-sass": "^4.7.2",
-    "nodemon": "^1.13.0",
+    "node-sass": "^4.9.3",
+    "nodemon": "^1.18.3",
     "prettier": "^1.14.0",
     "prettier-tslint": "^0.4.0",
     "shelljs": "^0.7.7",

@@ -59,5 +59,5 @@ export let init = (req: Request, res: Response) => {
 function returnErrorAsJson(err: Error, res: Response) {
   console.log(err)
   res.statusCode = 500
-  res.end(err.message)
+  res.end(JSON.stringify(err))
 }
